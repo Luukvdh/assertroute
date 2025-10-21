@@ -1,0 +1,44 @@
+{
+  "name": "assertroute",
+  "version": "1.0.0",
+  "description": "Typescript fast & easy asserts",
+  "type": "module",
+  "main": "./dist/assertroute.js",
+  "exports": {
+    ".": {
+      "types": "./src/assertroute.ts",
+      "import": "./dist/assertroute.js"
+    },
+    "./*": "./dist/*.js"
+  },
+  "files": [
+    "dist/assertroute.js",
+    "dist/assertroute.d.ts",
+    "dist/assertroute.d.ts.map",
+	"dist/assertroute.browser.min.mjs"
+  ],
+  "keywords": [
+    "assert",
+    "check",
+    "javascript",
+    "typescript"
+  ],
+  "homepage": "https://github.com/Luukvdh/assertroute#readme",
+  "bugs": {
+    "url": "https://github.com/Luukvdh/assertroute/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Luukvdh/assertroute.git"
+  },
+  "license": "ISC",
+  "author": "Luuk van den Hoogen",
+  "scripts": {
+    "build": "tsc",
+    "build:browser": "esbuild src/assertroute.ts --bundle --minify --format=iife --global-name=assertroute --platform=browser --outfile=dist/assertroute.browser.min.mjs",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
+  }
+}
