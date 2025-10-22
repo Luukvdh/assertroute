@@ -11,11 +11,19 @@ export type AssertRouteOptions = {
     forceWrap?: boolean;
     forceInvoke?: boolean;
 };
-export declare function assertRoute<T>(fallback: T, fn: () => T, options?: AssertRouteOptions): T;
+export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
 export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
-export declare function assertRouteAsync<T>(fallback: T, fn: () => Promise<T>, options?: AssertRouteOptions): Promise<T>;
+export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
+export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
+export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
+export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
+export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
+export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
+export declare function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions, ...args: A): Promise<T>;
 export declare function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions): (...args: A) => Promise<T>;
-export declare function routeWith<T>(fallback: T, options?: AssertRouteOptions): <A extends any[]>(fn: (...args: A) => T) => (...args: A) => T;
+export declare function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions): (...args: A) => Promise<void>;
+export declare function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions, ...args: A): Promise<void>;
+export declare function typeOfDetailed(x: unknown): string;
 export declare function isString(x: unknown): x is string;
 export declare function isNumber(x: unknown): x is number;
 export declare function isBoolean(x: unknown): x is boolean;
@@ -154,6 +162,52 @@ export declare function assertUndefined(x: unknown, message?: string): asserts x
 export declare function assertEquals<T>(actual: T, expected: T, message?: string): void;
 export declare function assertNotEquals<T>(actual: T, expected: T, message?: string): void;
 export declare function assertDeepEquals<T>(actual: T, expected: T, message?: string): void;
+/** Ensures that a Response is ok (status 200–299). */
+export declare function assertFetchOk(res: Response, message?: string): Promise<Response>;
+/** Fetch + ok + JSON parse, returns fallback on failure. */
+export declare function assertJsonFetch<T = unknown>(url: string, fallback: T, options?: RequestInit, routeOptions?: AssertRouteOptions): Promise<T>;
+/** Fetch + ok + text. */
+export declare function assertTextFetch(url: string, fallback?: string, options?: RequestInit, routeOptions?: AssertRouteOptions): Promise<string>;
+/** Ensures JSON object contains given keys. */
+export declare function assertJsonHasKeys(obj: unknown, ...keys: string[]): asserts obj is Record<string, unknown>;
+/** Ensures Content-Type header matches expected type. */
+export declare function assertResponseContentType(res: unknown, expected: string | RegExp): asserts res is Response;
+interface DatabaseLike {
+    prepare: (sql: string) => {
+        all: (...params: any[]) => any[];
+        run: (...params: any[]) => {
+            changes: number;
+        };
+    };
+}
+/** Assert DB connection seems valid. */
+export declare function assertDbConnected(db: DatabaseLike): void;
+/** Run query and return rows, with fallback. */
+export declare function assertSqlQuery<T = any>(db: DatabaseLike, sql: string, params?: unknown[], fallback?: T[]): T[];
+/** Run update/insert/delete, assert affected > 0. */
+export declare function assertSqlRun(db: DatabaseLike, sql: string, params?: unknown[], fallback?: number): number;
+/** Async version (for sqlite async API). */
+export declare function assertSqlQueryAsync<T = any>(db: {
+    all: (sql: string, ...params: any[]) => Promise<T[]>;
+}, sql: string, fallback?: T[], ...params: any[]): Promise<T[]>;
+interface RequestLike {
+    is: (type: string) => boolean;
+    body: any;
+    query: Record<string, any>;
+}
+interface ResponseLike {
+    json: (body: any) => void;
+    status: (code: number) => ResponseLike;
+}
+interface NextFunction {
+    (err?: any): void;
+}
+/** Middleware: asserts JSON body with required keys. */
+export declare function assertJsonBody(keys: string[]): (req: RequestLike, res: ResponseLike, next: NextFunction) => void;
+/** Asserts query param presence. */
+export declare function assertQueryParam(req: RequestLike, key: string): void;
+/** Wraps async route handlers safely with fallback. */
+export declare function routeSafe<H extends (req: RequestLike, res: ResponseLike, next: NextFunction) => Promise<any>>(fallback: Awaited<ReturnType<H>>, handler: H): (req: RequestLike, res: ResponseLike, next: NextFunction) => void;
 /** Bouwt een functie die N asserts tegen dezelfde args runt en boolean teruggeeft. */
 export declare function isValid<A extends any[]>(...assertions: Array<(...args: A) => void>): (...args: A) => boolean;
 export declare const instanceOf: <C extends new (...args: any[]) => any>(x: unknown, ctor: C, message?: string) => void;
@@ -167,7 +221,6 @@ export type Sure = {
     ok: typeof assert;
     route: typeof assertRoute;
     routeAsync: typeof assertRouteAsync;
-    routeWith: typeof routeWith;
     isValid: typeof isValid;
     isString: typeof assertString;
     isNumber: typeof assertNumber;

@@ -1,18 +1,50 @@
 // path: src/assertroute.ts
 /* Minimal docs, focus op narrowing-veiligheid. */
 
+function getCallerName(stackOffset = 3): string | undefined {
+  const stack = new Error().stack;
+  if (!stack) return undefined;
+  const match = stack.split('\n')[stackOffset]?.match(/at\s+([\w.$<>\[\]]+)/);
+  return match?.[1];
+}
+
+function summarizeValue(v: unknown): string {
+  const t = typeof v;
+  if (v === null) return 'null';
+  if (Array.isArray(v)) {
+    const sample = v
+      .slice(0, 3)
+      .map((x) => JSON.stringify(x))
+      .join(', ');
+    return `array(len=${v.length}, sample=[${sample}${v.length > 3 ? ', …' : ''}])`;
+  }
+  if (t === 'object') {
+    const keys = Object.keys(v as object).slice(0, 3);
+    return `object(keys=[${keys.join(', ')}${keys.length > 3 ? ', …' : ''}])`;
+  }
+  if (t === 'string') {
+    return `string(len=${(v as string).length}, sample="${(v as string).slice(0, 12)}${(v as string).length > 12 ? '…' : ''}")`;
+  }
+  return `${t}(${String(v)})`;
+}
+
 export class AssertError extends Error {
   readonly code = 'ASSERT_FAILED' as const;
   readonly info?: Record<string, unknown>;
+
   constructor(message: string, info?: Record<string, unknown>, cause?: unknown) {
-    // @ts-ignore: ErrorOptions niet overal aanwezig
-    super(message, cause ? { cause } : undefined);
+    const caller = getCallerName(3);
+    const typeSummary = info?.value !== undefined ? summarizeValue(info.value) : undefined;
+    const base = message || `${caller ?? 'assert'} failed`;
+    const fullMsg = typeSummary ? `${base} (got: ${typeSummary})` : base;
+
+    // @ts-ignore
+    super(fullMsg, cause ? { cause } : undefined);
     this.name = 'AssertError';
-    this.info = info;
+    this.info = { ...info, caller };
     if (cause && !(this as any).cause) (this as any).cause = cause;
   }
 }
-
 /* ---------------- internals ---------------- */
 type OnError = (err: AssertError) => void;
 
@@ -69,65 +101,106 @@ function wrapAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<
   }) as (...args: A) => Promise<T>;
 }
 
+type SafeFn<A extends any[], T> = (...args: A) => T;
+
 /* overloads */
-export function assertRoute<T>(fallback: T, fn: () => T, options?: AssertRouteOptions): T;
+export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
+
 export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
-export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options: AssertRouteOptions = {}): T | ((...args: A) => T) {
-  const { forceWrap, forceInvoke } = options;
-  if (forceInvoke) {
-    try {
-      return (fn as () => T)();
-    } catch (e) {
-      return handleError<T>(e, options.onError, options.catchNonAssertErrors, fallback);
-    }
+
+export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
+
+export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
+
+/* ---------------- sync variant ---------------- */
+
+export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
+export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
+export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
+export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
+
+export function assertRoute<T, A extends any[]>(fallbackOrFn: T | ((...args: A) => T), fnOrOpts?: ((...args: A) => T) | AssertRouteOptions, options?: AssertRouteOptions, ...args: A): T | ((...args: A) => T) {
+  let fallback: T;
+  let fn: (...args: A) => T;
+  let opts: AssertRouteOptions | undefined;
+
+  if (typeof fallbackOrFn === 'function') {
+    fallback = undefined as T;
+    fn = fallbackOrFn as (...args: A) => T;
+    opts = fnOrOpts as AssertRouteOptions | undefined;
+  } else {
+    fallback = fallbackOrFn as T;
+    fn = fnOrOpts as (...args: A) => T;
+    opts = options;
   }
-  if (forceWrap) return wrapSync<T, A>(fallback, fn, options);
-  if (fn.length === 0) {
-    try {
-      return (fn as () => T)();
-    } catch (e) {
-      return handleError<T>(e, options.onError, options.catchNonAssertErrors, fallback);
-    }
-  }
-  return wrapSync<T, A>(fallback, fn, options);
+
+  const wrapped = wrapSync(fallback, fn, opts);
+  return args.length ? wrapped(...args) : wrapped;
 }
 
-export function assertRouteAsync<T>(fallback: T, fn: () => Promise<T>, options?: AssertRouteOptions): Promise<T>;
+/* ---------------- async variant ---------------- */
+
+export function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions, ...args: A): Promise<T>;
 export function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions): (...args: A) => Promise<T>;
-export function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options: AssertRouteOptions = {}): Promise<T> | ((...args: A) => Promise<T>) {
-  const { forceWrap, forceInvoke } = options;
-  if (forceInvoke) {
-    return (async () => {
-      try {
-        return await (fn as () => Promise<T>)();
-      } catch (e) {
-        return handleError<T>(e, options.onError, options.catchNonAssertErrors, fallback);
-      }
-    })();
-  }
-  if (forceWrap) return wrapAsync<T, A>(fallback, fn, options);
-  if (fn.length === 0) {
-    return (async () => {
-      try {
-        return await (fn as () => Promise<T>)();
-      } catch (e) {
-        return handleError<T>(e, options.onError, options.catchNonAssertErrors, fallback);
-      }
-    })();
-  }
-  return wrapAsync<T, A>(fallback, fn, options);
-}
+export function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions): (...args: A) => Promise<void>;
+export function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions, ...args: A): Promise<void>;
 
-export function routeWith<T>(fallback: T, options?: AssertRouteOptions) {
-  return <A extends any[]>(fn: (...args: A) => T) => wrapSync<T, A>(fallback, fn, options);
+export function assertRouteAsync<T, A extends any[]>(
+  fallbackOrFn: T | ((...args: A) => Promise<T>),
+  fnOrOpts?: ((...args: A) => Promise<T>) | AssertRouteOptions,
+  options?: AssertRouteOptions,
+  ...args: A
+): Promise<T> | ((...args: A) => Promise<T>) {
+  let fallback: T;
+  let fn: (...args: A) => Promise<T>;
+  let opts: AssertRouteOptions | undefined;
+
+  if (typeof fallbackOrFn === 'function') {
+    fallback = undefined as T;
+    fn = fallbackOrFn as (...args: A) => Promise<T>;
+    opts = fnOrOpts as AssertRouteOptions | undefined;
+  } else {
+    fallback = fallbackOrFn as T;
+    fn = fnOrOpts as (...args: A) => Promise<T>;
+    opts = options;
+  }
+
+  const wrapped = wrapAsync(fallback, fn, opts);
+  return args.length ? Promise.resolve(wrapped(...args)) : wrapped;
 }
 
 /* ---------------- guards ---------------- */
-function typeOfDetailed(x: unknown): string {
+export function typeOfDetailed(x: unknown): string {
   if (x === null) return 'null';
-  if (Array.isArray(x)) return 'array';
-  if (x instanceof Date) return 'date';
-  if (typeof x === 'object') return (x as any).constructor?.name || 'object';
+  if (Array.isArray(x)) {
+    const len = x.length;
+    const sample = x
+      .slice(0, 3)
+      .map((v) => JSON.stringify(v))
+      .join(', ');
+    return `array(len=${len}${len ? `, sample=[${sample}${len > 3 ? ', …' : ''}]` : ''})`;
+  }
+  if (x instanceof Date) return `date(${x.toISOString()})`;
+  if (x instanceof HTMLElement) return `element(<${x.tagName.toLowerCase()}>, children=${x.childElementCount})`;
+  if (typeof x === 'object' && x !== null) {
+    const ctorName = x.constructor?.name ?? 'Object';
+    if (ctorName !== 'Object') {
+      // geef speciale weergave voor custom / DOM classes
+      if ('tagName' in (x as any)) {
+        return `element(<${(x as any).tagName.toLowerCase()}>, class=${ctorName})`;
+      }
+      return `instanceof ${ctorName}`;
+    }
+    // gewone objecten
+    const keys = Object.keys(x as object);
+    const sample = keys.slice(0, 3).join(', ');
+    return `object(keys=[${sample}${keys.length > 3 ? ', …' : ''}])`;
+  }
+  if (typeof x === 'string') return `string(len=${x.length}, sample="${x.slice(0, 12)}${x.length > 12 ? '…' : ''}")`;
+  if (typeof x === 'number') return Number.isFinite(x) ? `number(${x})` : `number(${String(x)})`;
+  if (typeof x === 'boolean') return `boolean(${x})`;
+  if (typeof x === 'function') return `function(${x.name || 'anonymous'})`;
+  if (typeof x === 'undefined') return 'undefined';
   return typeof x;
 }
 
@@ -202,15 +275,15 @@ export function assertPromiseLike<T = unknown>(x: unknown, message = 'Expected P
 }
 
 export function assertDefined<T>(x: T | undefined, message = 'Expected defined', info?: Record<string, unknown>): asserts x is T {
-  assert(isDefined(x), message, info);
+  assert(isDefined(x), message, { ...info, got: typeOfDetailed(x) });
 }
 
 export function assertNonNull<T>(x: T | null, message = 'Expected non-null', info?: Record<string, unknown>): asserts x is T {
-  assert(isNonNull(x), message, info);
+  assert(isNonNull(x), message, { ...info, got: typeOfDetailed(x) });
 }
 
 export function assertPresent<T>(x: T | null | undefined, message = 'Expected value present', info?: Record<string, unknown>): asserts x is T {
-  assert(isPresent(x), message, info);
+  assert(isPresent(x), message, { ...info, got: typeOfDetailed(x) });
 }
 export function assertInstanceOf<C extends new (...args: any[]) => any>(x: unknown, ctor: C, message?: string, info?: Record<string, unknown>): asserts x is InstanceType<C> {
   assert(isInstanceOf(x, ctor), message ?? `Expected instance of ${ctor?.name ?? '<ctor>'}`, {
@@ -853,6 +926,149 @@ export function assertDeepEquals<T>(actual: T, expected: T, message?: string) {
   assert(deepEqual(actual, expected), message ?? `Expected deep equality`);
 }
 
+/* ---------------- Fetch  ---------------- */
+
+/** Ensures that a Response is ok (status 200–299). */
+export async function assertFetchOk(res: Response, message?: string): Promise<Response> {
+  assert(res instanceof Response, message ?? 'Expected Response');
+  assert(res.ok, message ?? `Fetch failed: ${res.status} ${res.statusText}`);
+  return res;
+}
+
+/** Fetch + ok + JSON parse, returns fallback on failure. */
+export async function assertJsonFetch<T = unknown>(url: string, fallback: T, options?: RequestInit, routeOptions?: AssertRouteOptions): Promise<T> {
+  return assertRouteAsync(
+    fallback,
+    async () => {
+      const res = await fetch(url, options);
+      await assertFetchOk(res);
+      return (await res.json()) as T;
+    },
+    routeOptions,
+  );
+}
+
+/** Fetch + ok + text. */
+export async function assertTextFetch(url: string, fallback = '', options?: RequestInit, routeOptions?: AssertRouteOptions): Promise<string> {
+  return assertRouteAsync(
+    fallback,
+    async () => {
+      const res = await fetch(url, options);
+      await assertFetchOk(res);
+      return await res.text();
+    },
+    routeOptions,
+  );
+}
+
+/** Ensures JSON object contains given keys. */
+export function assertJsonHasKeys(obj: unknown, ...keys: string[]): asserts obj is Record<string, unknown> {
+  assert(typeof obj === 'object' && obj !== null, 'Expected JSON object');
+  const r = obj as Record<string, unknown>;
+  for (const k of keys) {
+    assert(k in r, `Missing key '${k}'`);
+  }
+}
+
+/** Ensures Content-Type header matches expected type. */
+export function assertResponseContentType(res: unknown, expected: string | RegExp): asserts res is Response {
+  assert(res instanceof Response, 'Expected Response');
+  const type = (res as Response).headers.get('content-type');
+  assert(type, 'Response missing content-type');
+  if (typeof expected === 'string') assert(type.includes(expected), `Expected content-type: ${expected}`);
+  else assert(expected.test(type), `Expected content-type to match ${expected}`);
+}
+
+/* ---------------- SQLite & better-sqlite ---------------- */
+
+// Minimal type interfaces to avoid mandatory imports
+interface DatabaseLike {
+  prepare: (sql: string) => {
+    all: (...params: any[]) => any[];
+    run: (...params: any[]) => { changes: number };
+  };
+}
+
+interface AsyncDatabaseLike {
+  all: (sql: string, ...params: any[]) => Promise<any[]>;
+}
+
+/** Assert DB connection seems valid. */
+export function assertDbConnected(db: DatabaseLike): void {
+  assert(typeof db.prepare === 'function', 'Invalid sqlite database connection');
+}
+
+/** Run query and return rows, with fallback. */
+export function assertSqlQuery<T = any>(db: DatabaseLike, sql: string, params: unknown[] = [], fallback: T[] = []): T[] {
+  return assertRoute(fallback, () => {
+    const stmt = db.prepare(sql);
+    const rows = stmt.all(...params);
+    assert(Array.isArray(rows), 'Query did not return array');
+    return rows as T[];
+  });
+}
+
+/** Run update/insert/delete, assert affected > 0. */
+export function assertSqlRun(db: DatabaseLike, sql: string, params: unknown[] = [], fallback = 0): number {
+  return assertRoute(fallback, () => {
+    const stmt = db.prepare(sql);
+    const res = stmt.run(...params);
+    assert(res.changes > 0, `Expected ${sql} to affect rows`);
+    return res.changes;
+  });
+}
+
+/** Async version (for sqlite async API). */
+export async function assertSqlQueryAsync<T = any>(db: { all: (sql: string, ...params: any[]) => Promise<T[]> }, sql: string, fallback: T[] = [], ...params: any[]): Promise<T[]> {
+  return assertRouteAsync(fallback, async () => {
+    const rows = await db.all(sql, ...params);
+    assert(Array.isArray(rows), 'Expected query to return array');
+    return rows;
+  });
+}
+/* ---------------- Express middleware ---------------- */
+
+interface RequestLike {
+  is: (type: string) => boolean;
+  body: any;
+  query: Record<string, any>;
+}
+
+interface ResponseLike {
+  json: (body: any) => void;
+  status: (code: number) => ResponseLike;
+}
+
+interface NextFunction {
+  (err?: any): void;
+}
+
+/** Middleware: asserts JSON body with required keys. */
+export function assertJsonBody(keys: string[]): (req: RequestLike, res: ResponseLike, next: NextFunction) => void {
+  return (req, res, next) => {
+    assert(req.is('application/json'), 'Expected JSON body');
+    assert(typeof req.body === 'object', 'Body must be object');
+    for (const k of keys) {
+      assert(k in req.body, `Missing field '${k}'`);
+    }
+    next();
+  };
+}
+
+/** Asserts query param presence. */
+export function assertQueryParam(req: RequestLike, key: string): void {
+  assert(req.query[key] !== undefined, `Missing query param '${key}'`);
+}
+
+/** Wraps async route handlers safely with fallback. */
+export function routeSafe<H extends (req: RequestLike, res: ResponseLike, next: NextFunction) => Promise<any>>(fallback: Awaited<ReturnType<H>>, handler: H): (req: RequestLike, res: ResponseLike, next: NextFunction) => void {
+  return (req, res, next) => {
+    assertRouteAsync(fallback, () => handler(req, res, next))
+      .then((v) => res.json(v))
+      .catch(next);
+  };
+}
+
 /* ---------------- boolean wrapper over multiple asserts ---------------- */
 /** Bouwt een functie die N asserts tegen dezelfde args runt en boolean teruggeeft. */
 export function isValid<A extends any[]>(...assertions: Array<(...args: A) => void>): (...args: A) => boolean {
@@ -881,9 +1097,7 @@ export type Sure = {
   ok: typeof assert;
   route: typeof assertRoute;
   routeAsync: typeof assertRouteAsync;
-  routeWith: typeof routeWith;
   isValid: typeof isValid;
-
   isString: typeof assertString;
   isNumber: typeof assertNumber;
   isBoolean: typeof assertBoolean;
@@ -1007,7 +1221,6 @@ export const sure: Sure = {
   ok: assert,
   route: assertRoute,
   routeAsync: assertRouteAsync,
-  routeWith,
   isValid,
 
   isString: assertString,
