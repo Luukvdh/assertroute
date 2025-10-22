@@ -1,16 +1,19 @@
 {
   "name": "assertroute",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Typescript fast & easy asserts",
   "license": "ISC",
   "author": "Luuk van den Hoogen",
   "homepage": "https://github.com/Luukvdh/assertroute#readme",
-  "bugs": { "url": "https://github.com/Luukvdh/assertroute/issues" },
-  "repository": { "type": "git", "url": "git+https://github.com/Luukvdh/assertroute.git" },
-
+  "bugs": {
+    "url": "https://github.com/Luukvdh/assertroute/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Luukvdh/assertroute.git"
+  },
   "type": "module",
   "sideEffects": false,
-
   "main": "./dist/assertroute.cjs",
   "module": "./dist/assertroute.esm.js",
   "types": "./dist/assertroute.d.ts",
@@ -24,7 +27,9 @@
   },
   "unpkg": "dist/assertroute.browser.min.js",
   "jsdelivr": "dist/assertroute.browser.min.js",
-  "files": ["dist/*"],
+  "files": [
+    "dist/*"
+  ],
   "scripts": {
     "clean": "rimraf dist",
     "build": "npm run clean && node scripts/build.mjs",
@@ -37,9 +42,10 @@
     "rimraf": "^6.0.1",
     "typescript": "^5.6.3"
   },
-  "keywords": ["assert", "typescript", "guards", "narrowing"]
+  "keywords": [
+    "assert",
+    "typescript",
+    "guards",
+    "narrowing"
+  ]
 }
-
-
-
-
