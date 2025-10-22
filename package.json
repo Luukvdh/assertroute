@@ -1,44 +1,45 @@
 {
   "name": "assertroute",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Typescript fast & easy asserts",
-  "type": "module",
-  "main": "./dist/assertroute.js",
-  "exports": {
-    ".": {
-      "types": "./src/assertroute.ts",
-      "import": "./dist/assertroute.js"
-    },
-    "./*": "./dist/*.js"
-  },
-  "files": [
-    "dist/assertroute.js",
-    "dist/assertroute.d.ts",
-    "dist/assertroute.d.ts.map",
-	"dist/assertroute.browser.min.mjs"
-  ],
-  "keywords": [
-    "assert",
-    "check",
-    "javascript",
-    "typescript"
-  ],
-  "homepage": "https://github.com/Luukvdh/assertroute#readme",
-  "bugs": {
-    "url": "https://github.com/Luukvdh/assertroute/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Luukvdh/assertroute.git"
-  },
   "license": "ISC",
   "author": "Luuk van den Hoogen",
+  "homepage": "https://github.com/Luukvdh/assertroute#readme",
+  "bugs": { "url": "https://github.com/Luukvdh/assertroute/issues" },
+  "repository": { "type": "git", "url": "git+https://github.com/Luukvdh/assertroute.git" },
+
+  "type": "module",
+  "sideEffects": false,
+
+  "main": "./dist/assertroute.cjs",
+  "module": "./dist/assertroute.esm.js",
+  "types": "./dist/assertroute.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/assertroute.d.ts",
+      "import": "./dist/assertroute.esm.js",
+      "require": "./dist/assertroute.cjs",
+      "default": "./dist/assertroute.esm.js"
+    }
+  },
+  "unpkg": "dist/assertroute.browser.min.js",
+  "jsdelivr": "dist/assertroute.browser.min.js",
+  "files": ["dist/*"],
   "scripts": {
-    "build": "tsc",
-    "build:browser": "esbuild src/assertroute.ts --bundle --minify --format=iife --global-name=assertroute --platform=browser --outfile=dist/assertroute.browser.min.mjs",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "build": "npm run clean && node scripts/build.mjs",
+    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "build:browser": "esbuild src/assertroute.ts --bundle --minify --format=iife --global-name=assertroute --platform=browser --sourcemap --outfile=dist/assertroute.browser.min.js",
+    "build:all": "npm run clean && node scripts/build.mjs && npm run build:types && npm run build:browser"
   },
   "devDependencies": {
-    "esbuild": "^0.21.5"
-  }
+    "esbuild": "^0.21.5",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  },
+  "keywords": ["assert", "typescript", "guards", "narrowing"]
 }
+
+
+
+

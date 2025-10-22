@@ -1,0 +1,10 @@
+{
+  "semi": true,
+  "singleQuote": true,
+  "printWidth": 239,
+  "tabWidth": 2,
+  "useTabs": false,
+   "overrides": [
+    { "files": "src/server.ts", "options": { "printWidth": 240 } }
+  ]
+}
