@@ -103,22 +103,23 @@ function wrapAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<
 
 type SafeFn<A extends any[], T> = (...args: A) => T;
 
-/* overloads */
-export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
-
-export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
-
-export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
-
-export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
-
 /* ---------------- sync variant ---------------- */
 
 export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
+
 export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
+
 export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
+
 export function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
 
+/**
+ * assertRoute:
+ * Runs a function safely with a fallback return value.
+ * - If called as `assertRoute(fn)` → assumed fallback = undefined, returns function or void.
+ * - If called as `assertRoute(fallback, fn)` → uses fallback when assert fails.
+ * - Accepts extra args to immediately invoke the wrapped function.
+ */
 export function assertRoute<T, A extends any[]>(fallbackOrFn: T | ((...args: A) => T), fnOrOpts?: ((...args: A) => T) | AssertRouteOptions, options?: AssertRouteOptions, ...args: A): T | ((...args: A) => T) {
   let fallback: T;
   let fn: (...args: A) => T;
@@ -141,10 +142,20 @@ export function assertRoute<T, A extends any[]>(fallbackOrFn: T | ((...args: A) 
 /* ---------------- async variant ---------------- */
 
 export function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions, ...args: A): Promise<T>;
+
 export function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions): (...args: A) => Promise<T>;
+
 export function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions): (...args: A) => Promise<void>;
+
 export function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions, ...args: A): Promise<void>;
 
+/**
+ * assertRouteAsync:
+ * Runs an async function safely with a fallback return value.
+ * - If called as `assertRouteAsync(fn)` → assumed fallback = undefined.
+ * - If called as `assertRouteAsync(fallback, fn)` → uses fallback on AssertError.
+ * - Accepts extra args to immediately invoke the wrapped async function.
+ */
 export function assertRouteAsync<T, A extends any[]>(
   fallbackOrFn: T | ((...args: A) => Promise<T>),
   fnOrOpts?: ((...args: A) => Promise<T>) | AssertRouteOptions,
@@ -166,9 +177,8 @@ export function assertRouteAsync<T, A extends any[]>(
   }
 
   const wrapped = wrapAsync(fallback, fn, opts);
-  return args.length ? Promise.resolve(wrapped(...args)) : wrapped;
+  return args.length ? wrapped(...args) : wrapped;
 }
-
 /* ---------------- guards ---------------- */
 export function typeOfDetailed(x: unknown): string {
   if (x === null) return 'null';
