@@ -15,10 +15,6 @@ export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...arg
 export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
 export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
 export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
-export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions, ...args: A): T;
-export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
-export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions): (...args: A) => void;
-export declare function assertRoute<A extends any[]>(fn: (...args: A) => void, options?: AssertRouteOptions, ...args: A): void;
 export declare function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions, ...args: A): Promise<T>;
 export declare function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions): (...args: A) => Promise<T>;
 export declare function assertRouteAsync<A extends any[]>(fn: (...args: A) => Promise<void>, options?: AssertRouteOptions): (...args: A) => Promise<void>;
@@ -210,17 +206,11 @@ export declare function assertQueryParam(req: RequestLike, key: string): void;
 export declare function routeSafe<H extends (req: RequestLike, res: ResponseLike, next: NextFunction) => Promise<any>>(fallback: Awaited<ReturnType<H>>, handler: H): (req: RequestLike, res: ResponseLike, next: NextFunction) => void;
 /** Bouwt een functie die N asserts tegen dezelfde args runt en boolean teruggeeft. */
 export declare function isValid<A extends any[]>(...assertions: Array<(...args: A) => void>): (...args: A) => boolean;
-export declare const instanceOf: <C extends new (...args: any[]) => any>(x: unknown, ctor: C, message?: string) => void;
-export declare const isNonEmptyString: (x: unknown, message?: string) => void;
-export declare const stringLengthAtLeast: (x: unknown, n: number, message?: string) => void;
-export declare const stringLengthAtMost: (x: unknown, n: number, message?: string) => void;
-export declare const stringContains: (x: unknown, needle: string | RegExp, message?: string) => void;
-export declare const isNonEmptyArray: (x: unknown, message?: string) => void;
-export declare const arrayLength: (x: unknown, len: number, message?: string) => void;
 export type Sure = {
-    ok: typeof assert;
-    route: typeof assertRoute;
-    routeAsync: typeof assertRouteAsync;
+    assert: typeof assert;
+    Route: typeof assertRoute;
+    assertRoute: typeof assertRoute;
+    assertRouteAsync: typeof assertRouteAsync;
     isValid: typeof isValid;
     isString: typeof assertString;
     isNumber: typeof assertNumber;
@@ -327,6 +317,9 @@ export type Sure = {
     elementHidden: typeof assertElementHidden;
     elementVisible: typeof assertElementVisible;
     oneOfPrimitive: typeof assertOneOfPrimitive;
+    arrayHasLength: typeof assertArrayLength;
+    isInstanceOf: typeof assertInstanceOf;
+    isStringNotEmpty: typeof assertNonEmptyString;
 };
 export declare const sure: Sure;
 export default sure;

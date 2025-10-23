@@ -384,7 +384,7 @@ export function assertStringIncludesAny(x: unknown, ...needles: string[]): asser
   const s = x as string;
   assert(
     needles.some((n) => s.includes(n)),
-    `Expected string to include any of [${needles.join(', ')}]`,
+    `Expected string to include any of [${needles.join(', ')}]`
   );
 }
 export function assertStringIncludesAll(x: unknown, ...needles: string[]): asserts x is string {
@@ -392,7 +392,7 @@ export function assertStringIncludesAll(x: unknown, ...needles: string[]): asser
   const s = x as string;
   assert(
     needles.every((n) => s.includes(n)),
-    `Expected string to include all of [${needles.join(', ')}]`,
+    `Expected string to include all of [${needles.join(', ')}]`
   );
 }
 function isPlainObject(x: unknown): x is Record<string, unknown> {
@@ -527,14 +527,14 @@ export function assertArrayIncludesString<T = unknown>(x: unknown, needle: strin
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).some((item) => String(item).includes(needle)),
-    message ?? `Expected array to include string containing "${needle}"`,
+    message ?? `Expected array to include string containing "${needle}"`
   );
 }
 export function assertArrayIncludesNumber<T = unknown>(x: unknown, needle: number, message?: string): asserts x is T[] {
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).some((item) => item === needle),
-    message ?? `Expected array to include number ${needle}`,
+    message ?? `Expected array to include number ${needle}`
   );
 }
 export function assertArrayIncludesObject<T = unknown>(x: unknown, needle: Record<string, unknown>, message?: string): asserts x is T[] {
@@ -542,42 +542,42 @@ export function assertArrayIncludesObject<T = unknown>(x: unknown, needle: Recor
   const needleStr = JSON.stringify(needle);
   assert(
     (x as any[]).some((item) => JSON.stringify(item) === needleStr),
-    message ?? `Expected array to include object ${needleStr}`,
+    message ?? `Expected array to include object ${needleStr}`
   );
 }
 export function assertArrayOnlyHasObjects<T = unknown>(x: unknown, message?: string): asserts x is Record<string, unknown>[] {
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).every((item) => typeof item === 'object' && item !== null && !Array.isArray(item)),
-    message ?? `Expected array to only contain objects`,
+    message ?? `Expected array to only contain objects`
   );
 }
 export function assertArrayOnlyHasStrings<T = unknown>(x: unknown, message?: string): asserts x is string[] {
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).every((item) => typeof item === 'string'),
-    message ?? `Expected array to only contain strings`,
+    message ?? `Expected array to only contain strings`
   );
 }
 export function assertArrayOnlyHasNumbers<T = unknown>(x: unknown, message?: string): asserts x is number[] {
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).every((item) => typeof item === 'number'),
-    message ?? `Expected array to only contain numbers`,
+    message ?? `Expected array to only contain numbers`
   );
 }
 export function assertArrayEveryIsFalsy<T = unknown>(x: unknown, message?: string): asserts x is T[] {
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).every((item) => !item),
-    message ?? `Expected every item to be falsy`,
+    message ?? `Expected every item to be falsy`
   );
 }
 export function assertArrayEveryIsTruthy<T = unknown>(x: unknown, message?: string): asserts x is T[] {
   assertArray<T>(x, message ?? `Expected array`);
   assert(
     (x as any[]).every((item) => !!item),
-    message ?? `Expected every item to be truthy`,
+    message ?? `Expected every item to be truthy`
   );
 }
 export function assertArrayIncludesCondition<T = unknown>(x: unknown, predicate: (item: unknown) => boolean, message?: string): asserts x is T[] {
@@ -699,7 +699,7 @@ export function assertHasKeys<O extends Record<string, unknown>, const K extends
   const r = obj as Record<string, unknown>;
   assert(
     keys.every((k) => k in r),
-    `Expected keys: ${keys.join(', ')}`,
+    `Expected keys: ${keys.join(', ')}`
   );
 }
 export function assertKeyEquals<O extends Record<string, unknown>, K extends keyof O>(obj: unknown, key: K, expected: unknown, message?: string): asserts obj is O {
@@ -716,7 +716,7 @@ export function assertAllKeysFalsy(obj: unknown, message?: string): asserts obj 
   assertObject(obj, message ?? `Expected object`);
   assert(
     Object.values(obj as Record<string, unknown>).every((v) => !v),
-    message ?? `Expected all keys to be falsy`,
+    message ?? `Expected all keys to be falsy`
   );
 }
 export function assertAllKeysSet(obj: unknown, message?: string): asserts obj is Record<string, unknown> {
@@ -724,7 +724,7 @@ export function assertAllKeysSet(obj: unknown, message?: string): asserts obj is
   const vals = Object.values(obj as Record<string, unknown>);
   assert(
     vals.every((v) => v !== null && v !== undefined),
-    message ?? `Expected all keys to be set (not null/undefined)`,
+    message ?? `Expected all keys to be set (not null/undefined)`
   );
 }
 export function assertAnyKeyNull(obj: unknown, message?: string): asserts obj is Record<string, unknown> {
@@ -732,7 +732,7 @@ export function assertAnyKeyNull(obj: unknown, message?: string): asserts obj is
   const vals = Object.values(obj as Record<string, unknown>);
   assert(
     vals.some((v) => v === null),
-    message ?? `Expected any key to be null`,
+    message ?? `Expected any key to be null`
   );
 }
 export function assertNonEmptyRecord(x: unknown, message = 'Expected non-empty object'): asserts x is Record<string, unknown> {
@@ -815,7 +815,9 @@ export function assertElementAttributeEquals(x: unknown, name: string, expected:
 export function isElementHidden(x: unknown): x is Element {
   if (typeof Element === 'undefined' || !(x instanceof Element)) return false;
   const computed = typeof window !== 'undefined' ? window.getComputedStyle(x) : null;
-  return computed ? computed.display === 'none' || computed.visibility === 'hidden' : false;
+  const hasHidden = x.hasAttribute('hidden') && x.getAttribute('hidden');
+  const displayHidden = computed ? computed.display === 'none' || computed.visibility === 'hidden' : false;
+  return !!hasHidden || !!displayHidden;
 }
 
 export function isElementVisible(x: unknown): x is Element {
@@ -954,7 +956,7 @@ export async function assertJsonFetch<T = unknown>(url: string, fallback: T, opt
       await assertFetchOk(res);
       return (await res.json()) as T;
     },
-    routeOptions,
+    routeOptions
   );
 }
 
@@ -967,7 +969,7 @@ export async function assertTextFetch(url: string, fallback = '', options?: Requ
       await assertFetchOk(res);
       return await res.text();
     },
-    routeOptions,
+    routeOptions
   );
 }
 
@@ -1093,20 +1095,12 @@ export function isValid<A extends any[]>(...assertions: Array<(...args: A) => vo
   };
 }
 
-/* ---------------- handige aliassen ---------------- */
-export const instanceOf = <C extends new (...args: any[]) => any>(x: unknown, ctor: C, message?: string) => assertInstanceOf(x, ctor, message);
-export const isNonEmptyString = (x: unknown, message?: string) => assertNonEmptyString(x, message);
-export const stringLengthAtLeast = (x: unknown, n: number, message?: string) => assertStringLengthAtLeast(x, n, message);
-export const stringLengthAtMost = (x: unknown, n: number, message?: string) => assertStringLengthAtMost(x, n, message);
-export const stringContains = (x: unknown, needle: string | RegExp, message?: string) => assertStringContains(x, needle, message);
-export const isNonEmptyArray = (x: unknown, message?: string) => assertArrayNotEmpty(x, message);
-export const arrayLength = (x: unknown, len: number, message?: string) => assertArrayLength(x, len, message);
-
 /* ---------------- sure-namespace ---------------- */
 export type Sure = {
-  ok: typeof assert;
-  route: typeof assertRoute;
-  routeAsync: typeof assertRouteAsync;
+  assert: typeof assert;
+  Route: typeof assertRoute;
+  assertRoute: typeof assertRoute;
+  assertRouteAsync: typeof assertRouteAsync;
   isValid: typeof isValid;
   isString: typeof assertString;
   isNumber: typeof assertNumber;
@@ -1223,14 +1217,17 @@ export type Sure = {
   elementAttributeEquals: typeof assertElementAttributeEquals;
   elementHidden: typeof assertElementHidden;
   elementVisible: typeof assertElementVisible;
-
   oneOfPrimitive: typeof assertOneOfPrimitive;
+  arrayHasLength: typeof assertArrayLength;
+  isInstanceOf: typeof assertInstanceOf;
+  isStringNotEmpty: typeof assertNonEmptyString;
 };
 
 export const sure: Sure = {
-  ok: assert,
-  route: assertRoute,
-  routeAsync: assertRouteAsync,
+  assert: assert,
+  Route: assertRoute,
+  assertRoute: assertRoute,
+  assertRouteAsync: assertRouteAsync,
   isValid,
 
   isString: assertString,
@@ -1348,8 +1345,10 @@ export const sure: Sure = {
   elementAttributeEquals: assertElementAttributeEquals,
   elementHidden: assertElementHidden,
   elementVisible: assertElementVisible,
-
   oneOfPrimitive: assertOneOfPrimitive,
+  arrayHasLength: (x: unknown, len: number, message?: string) => assertArrayLength(x, len, message),
+  isInstanceOf: <C extends new (...args: any[]) => any>(x: unknown, ctor: C, message?: string) => assertInstanceOf(x, ctor, message),
+  isStringNotEmpty: (x: unknown, message?: string) => assertNonEmptyString(x, message),
 } as const;
 
 export default sure;
