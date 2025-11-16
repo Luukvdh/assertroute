@@ -190,8 +190,15 @@ export function typeOfDetailed(x: unknown): string {
       .join(', ');
     return `array(len=${len}${len ? `, sample=[${sample}${len > 3 ? ', …' : ''}]` : ''})`;
   }
-  if (x instanceof Date) return `date(${x.toISOString()})`;
-  if (x instanceof Element) return `element(<${x.tagName.toLowerCase()}>, children=${x.childElementCount})`;
+  if (x === undefined) {
+    return 'undefined';
+  }
+  if (x instanceof Date) {
+    return `date(${x.toISOString()})`;
+  }
+  if (x instanceof HTMLElement) {
+    return `element(<${(x as HTMLElement).tagName.toLowerCase()}>, children=${x.childElementCount})`;
+  }
   if (typeof x === 'object' && x !== null) {
     const ctorName = x.constructor?.name ?? 'Object';
     if (ctorName !== 'Object') {

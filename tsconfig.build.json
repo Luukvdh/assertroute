@@ -8,7 +8,8 @@
     "target": "ESNext",
     "module": "ESNext",
     "esModuleInterop": true,
-    "strict": true
+    "strict": true,
+    "lib": ["DOM", "ES2020"]
   },
   "include": [
     "src/**/*.ts"
