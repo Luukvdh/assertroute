@@ -1,6 +1,6 @@
 {
   "name": "assertroute",
-  "version": "1.2.14",
+  "version": "1.2.15",
   "description": "Typescript fast & easy asserts",
   "license": "ISC",
   "author": "Luuk van den Hoogen",
