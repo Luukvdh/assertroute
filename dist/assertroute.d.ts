@@ -47,14 +47,15 @@ export declare function isString(x: unknown): x is string;
  * Narrowing:
  * - On a true branch, TypeScript narrows x to number.
  */
-export declare function isNumber(x: unknown): x is number;
+type NonNullableNumber = number & NonNullable<unknown>;
+export declare function isNumber(x: unknown): x is NonNullableNumber;
 /**
- * Returns true if x is a finite number.
+ * Returns true if x is a finite number and not zero.
  *
  * Narrowing:
  * - On a true branch, TypeScript narrows x to number.
  */
-export declare function isNumberNotZero(x: unknown): x is number;
+export declare function isNumberNotZero(x: unknown): x is NonNullableNumber;
 /**
  * Returns true if x is a boolean.
  *
