@@ -435,6 +435,9 @@ export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) =>
   const { onError, catchNonAssertErrors = false } = options;
 
   // If the function has no parameters (length === 0), execute it immediately
+  if (!fn) {
+    return fallback;
+  }
   if (fn.length === 0) {
     try {
       return (fn as () => T)();
