@@ -89,18 +89,20 @@ export function isString(x: unknown): x is string {
  * Narrowing:
  * - On a true branch, TypeScript narrows x to number.
  */
-export function isNumber(x: unknown): x is number {
-  return typeof x === 'number' && Number.isFinite(x);
+type NonNullableNumber = number & NonNullable<unknown>;
+
+export function isNumber(x: unknown): x is NonNullableNumber {
+  return x != null && typeof x === 'number' && Number.isFinite(x);
 }
 
 /**
- * Returns true if x is a finite number.
+ * Returns true if x is a finite number and not zero.
  *
  * Narrowing:
  * - On a true branch, TypeScript narrows x to number.
  */
-export function isNumberNotZero(x: unknown): x is number {
-  return typeof x === 'number' && Number.isFinite(x) && x !== 0;
+export function isNumberNotZero(x: unknown): x is NonNullableNumber {
+  return x != null && typeof x === 'number' && Number.isFinite(x);
 }
 
 /**
