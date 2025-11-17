@@ -196,7 +196,7 @@ export function typeOfDetailed(x: unknown): string {
   if (x instanceof Date) {
     return `date(${x.toISOString()})`;
   }
-  if (x instanceof HTMLElement) {
+  if (typeof window !== 'undefined' && x instanceof HTMLElement) {
     return `element(<${(x as HTMLElement).tagName.toLowerCase()}>, children=${x.childElementCount})`;
   }
   if (typeof x === 'object' && x !== null) {
