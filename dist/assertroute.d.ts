@@ -220,6 +220,10 @@ export declare function expectString<T>(x: T, message?: string): string;
  */
 export declare function expectNumber<T>(x: T, message?: string): number;
 /**
+ * Ensures x is a HTMLElement and returns it.
+ */
+export declare function expectElement<T>(x: T, message?: string): HTMLElement;
+/**
  * Ensures x is a boolean and returns it.
  */
 export declare function expectBoolean<T>(x: T, message?: string): boolean;
