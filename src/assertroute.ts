@@ -363,6 +363,14 @@ export function expectNumber<T>(x: T, message?: string): number {
 }
 
 /**
+ * Ensures x is a HTMLElement and returns it.
+ */
+export function expectElement<T>(x: T, message?: string): HTMLElement {
+  assertElement(x as unknown, message);
+  return x as unknown as HTMLElement;
+}
+
+/**
  * Ensures x is a boolean and returns it.
  */
 export function expectBoolean<T>(x: T, message?: string): boolean {
