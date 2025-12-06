@@ -5,13 +5,11 @@ Tiny, fast runtime assertions with clean TypeScript narrowing — plus a block-s
 Validate at the top; write clear, assumption-friendly logic in the middle. If any `assert*` throws an `AssertError` inside the route, we stop and return your default. Fewer `try/catch`, fewer defensive `if` checks, better narrowing.
 
 Have you always dislikes counting the brackets of you nested conditions? There has got to be a better way!
-
-````
+###before
 
 ```ts
-function findClientTags(cdata: any, allclients: any[]): string[] {
   if (!cdata || !Array.isArray(cdata.tags) || cdata.tags.length === 0) return [];
-  try {
+  try {  // exceptions mixed up
     result = allclients.filter((x) => x.tagsShared?.some((t) => cdata.tags.includes(t))).map((x) => x.name);
   } catch (e) {
     if (e instanceof Error) {
@@ -20,44 +18,15 @@ function findClientTags(cdata: any, allclients: any[]): string[] {
     }
   }
   if (!result || result.length === 0) {
-````
+```
 
 ## Install
 
-```bash
+````bash
 npm i assertroute
 ```
 
 ## Usage
-
-### ESM (Node/Bundlers)
-
-````ts
-import { v } from 'assertroute';
-
-function greet(x: unknown) {
-  v.assertString(x);
-  return `hi ${x}`;
-}
-
-// Simple: set default return value when asserts throw
-const safeGreet = v.route('oops', () => greet('Luuk'));
-
-// An example using v.fn to wrap a
-
-
-### Before (defensive checks and try/catch)
-
-```ts
-[];
-  try {
-    result = allclients.filter((x) => x.tagsShared?.some((t) => cdata.tags.includes(t))).map((x) => x.name);
-  } catch (e) {
-    if (e instanceof Error) {
-  if (!cdata?.tag) return result;
-  return ok ? 4 : 5;
-}
-````
 
 ### After (assert-first, block-scoped route)
 
@@ -240,7 +209,4 @@ const isValidUser = v.confirmOne(() => {
 Pro tip: keep one canonical name per helper. It improves discoverability, docs, and IntelliSense — no alias sprawl.
 
 Happy asserting.
-
-```
-
-```
+````
