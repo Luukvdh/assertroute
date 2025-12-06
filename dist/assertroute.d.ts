@@ -335,21 +335,6 @@ export declare function objectHasNoFalseyValues(x: unknown, message?: string, in
 export declare function isNonEmptyRecord(x: unknown): x is Record<string, unknown>;
 export declare function isNonZeroNumber(x: unknown): x is number;
 /** Composite guard: narrows to a union of non-empty primitives/structures. */
-export type NonEmpty = string | any[] | Record<string, unknown> | number | boolean;
-export declare function isNonEmpty(x: unknown): x is NonEmpty;
-/** Re-export: consumers can import { AssertionError } name for AssertError. */
-export type { AssertError as AssertionError };
-/**
- * Example:
- * const name = maybeName as unknown;
- * assertString(name);
- * // name is string here
- *
- * const result = assertRoute(() => {
- *   assertArrayNotEmpty(input, "input required");
- *   return input.length;
- * }, 0);
- */
 /** Asserts that x is a string with exact length `len`. */
 export declare function assertStringLength(x: unknown, len: number, message?: string): asserts x is string;
 /** Asserts that x is a string with length >= `n`. */
