@@ -134,6 +134,20 @@ export function isArray<T = unknown>(x: unknown): x is T[] {
 export function isObject(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null && !Array.isArray(x);
 }
+/**
+ * Returns true if x is thruthy as a boolean.
+ */
+export function isTruthy<T = unknown>(x: unknown): x is T {
+  assert(!!x, 'failed !! ntruthy test');
+  return true;
+}
+/*
+ * Returns false if undefined or null.
+ */
+export function isNotNil<T = unknown>(x: unknown): x is T {
+  assert(x !== null && x !== undefined, 'failed isNotNil test');
+  return true;
+}
 
 /**
  * Returns true if x is a valid Date instance (non-NaN time).
@@ -200,6 +214,52 @@ export function isInstanceOf<C extends new (...args: any[]) => any>(x: unknown, 
   return typeof ctor === 'function' && x instanceof ctor;
 }
 
+/**
+ * Returns input if instance validated, otherwise throws.
+ *
+ * Narrowing:
+ * - On a true branch, narrows x to InstanceType<C>.
+ */
+
+export function expectedGuardBoolean<C extends new (...args: any[]) => any>(x: unknown, ctor: C, asst?: (v: InstanceType<C>) => boolean | void): x is InstanceType<C> {
+  if (!(typeof ctor === 'function' && x instanceof ctor)) {
+    throw new AssertError('Invalid instance', { got: x, expected: ctor.name ?? ctor });
+  }
+  if (asst) {
+    const ok = asst(x as InstanceType<C>);
+    if (ok === false) {
+      throw new AssertError('Additional assertion failed', { got: x, expected: asst.name || 'predicate' });
+    }
+  }
+  return true;
+}
+
+export function expectedGuard<C extends new (...args: any[]) => any>(x: unknown, ctor: C, asst?: (v: InstanceType<C>) => boolean | void): x is InstanceType<C> {
+  if (!(typeof ctor === 'function' && x instanceof ctor)) {
+    throw new AssertError('Invalid instance', { got: x, expected: ctor.name ?? ctor });
+  }
+  if (asst) {
+    const ok = asst(x as InstanceType<C>);
+    if (ok === false) {
+      throw new AssertError('Additional assertion failed', { got: x, expected: asst.name || 'predicate' });
+    }
+  }
+  return x as InstanceType<C>;
+}
+
+// Value-returning version: convenient when you want the value directly
+export function assertExpected<C extends new (...args: any[]) => any>(x: unknown, ctor: C, asst?: (v: InstanceType<C>) => boolean | void): InstanceType<C> {
+  if (!(typeof ctor === 'function' && x instanceof ctor)) {
+    throw new AssertError('Invalid instance', { got: x, expected: ctor.name ?? ctor });
+  }
+  if (asst) {
+    const ok = asst(x as InstanceType<C>);
+    if (ok === false) {
+      throw new AssertError('Additional assertion failed', { got: x, expected: asst.name || 'predicate' });
+    }
+  }
+  return x as InstanceType<C>;
+}
 // ===============
 // Assert helpers with narrowing
 // ===============
@@ -322,6 +382,15 @@ export function assertNonNull<T>(x: T | null, message = 'Expected non-null', inf
  */
 export function assertPresent<T>(x: T | null | undefined, message = 'Expected value present', info?: Record<string, unknown>): asserts x is T {
   assert(isPresent(x), message, info);
+}
+/**
+ * Asserts that x is neither not converted to false boolean (truthy, falsey).
+ *
+ * Narrowing:
+ * - On success, narrows from T | null | undefined to T.
+ */
+export function assertTruthy<T>(x: T | null | undefined, message = 'Expected value truthy', info?: Record<string, unknown>): asserts x is T {
+  assert(isTruthy(x), message, info);
 }
 
 /** Alias: asserts that value exists (not null/undefined). */
@@ -577,6 +646,49 @@ export function assertNonEmptyString(x: unknown, message = 'Expected non-empty s
 export function assertArrayNotEmpty<T = unknown>(x: unknown, message = 'Expected non-empty array'): asserts x is T[] {
   assertArray<T>(x, message);
   assert((x as T[]).length > 0, message);
+}
+
+// Unified "non-empty" runtime checks + type guards
+// - Strings: length > 0
+// - Arrays: length > 0
+// - Objects: has at least one own key
+// - Numbers: finite and !== 0
+export function isNonEmptyString(x: unknown): x is string {
+  assertString(x);
+  assert((x as string).length > 0);
+  return true;
+}
+
+export function isNonEmptyArray<T = unknown>(x: unknown): x is T[] {
+  return Array.isArray(x) && (x as Array<T>).length > 0;
+}
+export function objectHasNoTruthyValues(x: unknown, message = 'Expected object', info?: Record<string, unknown>): boolean {
+  if (!(typeof x === 'object' && x !== null && !Array.isArray(x))) {
+    return false;
+  }
+  return Object.values(x as Record<string, unknown>).every((val) => !val);
+}
+
+export function objectHasNoFalseyValues(x: unknown, message = 'Expected object', info?: Record<string, unknown>): boolean {
+  if (!(typeof x === 'object' && x !== null && !Array.isArray(x))) {
+    return false;
+  }
+  return Object.values(x as Record<string, unknown>).every((val) => !!val);
+}
+export function isNonEmptyRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === 'object' && x !== null && !Array.isArray(x) && Object.keys(x).length > 0;
+}
+
+export function isNonZeroNumber(x: unknown): x is number {
+  return typeof x === 'number' && Number.isFinite(x) && x !== 0;
+}
+
+/** Composite guard: narrows to a union of non-empty primitives/structures. */
+export type NonEmpty = string | any[] | Record<string, unknown> | number | boolean;
+export function isNonEmpty(x: unknown): x is NonEmpty {
+  isNotNil(x);
+  isTruthy(x);
+  return isNonEmptyString(x) || isNonEmptyArray(x) || isNonEmptyRecord(x) || isNonZeroNumber(x) || typeof x === 'boolean';
 }
 
 // Re-export type for consumers to refine catches
@@ -1207,6 +1319,37 @@ export function onFail<T>(fn: () => T) {
       }),
     run: (handler: (err: AssertError) => T, options?: AssertOnFailOptions) => assertOnFail(fn, handler, options),
   } as const;
+}
+
+export function ifFails<T>(fallback: T, logFail: boolean = true) {
+  return {
+    on: (fn: (...args: any[]) => T) =>
+      assertRoute(fallback, fn, {
+        catchNonAssertErrors: false,
+        onError: (e: Error) => {
+          if (e instanceof AssertError && logFail) {
+            console.log(`${fn.name} failed,${e.message} ${e.stack?.substring(e.stack?.lastIndexOf('/')) ?? ''}`.substring(0, 160));
+          } else {
+            throw e;
+          }
+        },
+      }),
+
+    return: fallback,
+  } as const;
+}
+
+type AnyFn<Args extends any[] = any[], R = any> = (...args: Args) => R;
+
+export function _fn<Args extends any[], R>(defaultValue: R, impl: (...args: Args) => R): (...args: Args) => R {
+  return (...args: Args): R => {
+    try {
+      return impl(...args);
+    } catch (e) {
+      // log as needed
+      return defaultValue;
+    }
+  };
 }
 
 // ==========================

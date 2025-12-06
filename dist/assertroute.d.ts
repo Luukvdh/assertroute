@@ -10,9 +10,9 @@
  * - info: optional extra context provided by the assertion site
  */
 export declare class AssertError extends Error {
-    readonly code: "ASSERT_FAILED";
-    readonly info?: Record<string, unknown>;
-    constructor(message: string, info?: Record<string, unknown>);
+  readonly code: 'ASSERT_FAILED';
+  readonly info?: Record<string, unknown>;
+  constructor(message: string, info?: Record<string, unknown>);
 }
 /**
  * Set or clear a global onError handler for all assertion failures.
@@ -78,6 +78,11 @@ export declare function isArray<T = unknown>(x: unknown): x is T[];
  */
 export declare function isObject(x: unknown): x is Record<string, unknown>;
 /**
+ * Returns true if x is thruthy as a boolean.
+ */
+export declare function isTruthy<T = unknown>(x: unknown): x is T;
+export declare function isNotNil<T = unknown>(x: unknown): x is T;
+/**
  * Returns true if x is a valid Date instance (non-NaN time).
  *
  * Narrowing:
@@ -118,6 +123,15 @@ export declare function exists<T>(x: T | null | undefined): x is T;
  * - On a true branch, narrows x to InstanceType<C>.
  */
 export declare function isInstanceOf<C extends new (...args: any[]) => any>(x: unknown, ctor: C): x is InstanceType<C>;
+/**
+ * Returns input if instance validated, otherwise throws.
+ *
+ * Narrowing:
+ * - On a true branch, narrows x to InstanceType<C>.
+ */
+export declare function expectedGuardBoolean<C extends new (...args: any[]) => any>(x: unknown, ctor: C, asst?: (v: InstanceType<C>) => boolean | void): x is InstanceType<C>;
+export declare function expectedGuard<C extends new (...args: any[]) => any>(x: unknown, ctor: C, asst?: (v: InstanceType<C>) => boolean | void): x is InstanceType<C>;
+export declare function assertExpected<C extends new (...args: any[]) => any>(x: unknown, ctor: C, asst?: (v: InstanceType<C>) => boolean | void): InstanceType<C>;
 /**
  * Asserts that x is a string.
  *
@@ -199,6 +213,13 @@ export declare function assertNonNull<T>(x: T | null, message?: string, info?: R
  * - On success, narrows from T | null | undefined to T.
  */
 export declare function assertPresent<T>(x: T | null | undefined, message?: string, info?: Record<string, unknown>): asserts x is T;
+/**
+ * Asserts that x is neither not converted to false boolean (truthy, falsey).
+ *
+ * Narrowing:
+ * - On success, narrows from T | null | undefined to T.
+ */
+export declare function assertTruthy<T>(x: T | null | undefined, message?: string, info?: Record<string, unknown>): asserts x is T;
 /** Alias: asserts that value exists (not null/undefined). */
 export declare function assertExists<T>(x: T | null | undefined, message?: string, info?: Record<string, unknown>): asserts x is T;
 /**
@@ -245,8 +266,8 @@ export declare function expectDate(x: unknown, message?: string): Date;
  * - catchNonAssertErrors: when true, also catch and convert non-AssertError errors to fallback
  */
 export type AssertRouteOptions = {
-    onError?: (err: AssertError) => void;
-    catchNonAssertErrors?: boolean;
+  onError?: (err: AssertError) => void;
+  catchNonAssertErrors?: boolean;
 };
 /**
  * Execute a function in an assertion route. Any AssertError thrown inside is caught
@@ -307,6 +328,15 @@ export declare function assertNonEmptyString(x: unknown, message?: string): asse
  * - On success, narrows x to T[].
  */
 export declare function assertArrayNotEmpty<T = unknown>(x: unknown, message?: string): asserts x is T[];
+export declare function isNonEmptyString(x: unknown): x is string;
+export declare function isNonEmptyArray<T = unknown>(x: unknown): x is T[];
+export declare function objectHasNoTruthyValues(x: unknown, message?: string, info?: Record<string, unknown>): boolean;
+export declare function objectHasNoFalseyValues(x: unknown, message?: string, info?: Record<string, unknown>): boolean;
+export declare function isNonEmptyRecord(x: unknown): x is Record<string, unknown>;
+export declare function isNonZeroNumber(x: unknown): x is number;
+/** Composite guard: narrows to a union of non-empty primitives/structures. */
+export type NonEmpty = string | any[] | Record<string, unknown> | number | boolean;
+export declare function isNonEmpty(x: unknown): x is NonEmpty;
 /** Re-export: consumers can import { AssertionError } name for AssertError. */
 export type { AssertError as AssertionError };
 /**
@@ -391,8 +421,11 @@ export declare function assertArrayIncludesCondition<T = unknown>(x: unknown, pr
 /** Asserts that obj is a plain object containing the provided key. */
 export declare function assertHasKey<O extends Record<string, unknown>, K extends string>(obj: unknown, key: K, message?: string): asserts obj is O & Record<K, unknown>;
 /** Asserts that obj is a plain object containing all provided keys. */
-export declare function assertHasKeys<O extends Record<string, unknown>, const K extends readonly string[]>(obj: unknown, ...keys: K): asserts obj is O & {
-    [P in K[number]]: unknown;
+export declare function assertHasKeys<O extends Record<string, unknown>, const K extends readonly string[]>(
+  obj: unknown,
+  ...keys: K
+): asserts obj is O & {
+  [P in K[number]]: unknown;
 };
 /** Asserts that obj[key] strictly equals expected. */
 export declare function assertKeyEquals<O extends Record<string, unknown>, K extends keyof O>(obj: unknown, key: K, expected: unknown, message?: string): asserts obj is O;
@@ -476,7 +509,7 @@ export declare function assertOneOfPrimitive<T extends string | number | boolean
 export declare const assertIsArrayNotEmpty: typeof assertArrayNotEmpty;
 /** Options for assertOnFail/onFail wrappers. */
 export type AssertOnFailOptions = {
-    catchNonAssertErrors?: boolean;
+  catchNonAssertErrors?: boolean;
 };
 /**
  * Run fn, and if an AssertError occurs, invoke onFail(err) and return its value.
@@ -498,9 +531,17 @@ export declare function assertOnFail<T>(fn: () => T, onFail: (err: AssertError) 
  * onFail(() => risky()).return(fallback) or .run(handler)
  */
 export declare function onFail<T>(fn: () => T): {
-    readonly return: (fallback: T, options?: AssertOnFailOptions) => T;
-    readonly run: (handler: (err: AssertError) => T, options?: AssertOnFailOptions) => T;
+  readonly return: (fallback: T, options?: AssertOnFailOptions) => T;
+  readonly run: (handler: (err: AssertError) => T, options?: AssertOnFailOptions) => T;
 };
+export declare function ifFails<T>(
+  fallback: T,
+  logFail?: boolean
+): {
+  readonly on: (fn: (...args: any[]) => T) => T;
+  readonly return: T;
+};
+export declare function _fn<Args extends any[], R>(defaultValue: R, impl: (...args: Args) => R): (...args: Args) => R;
 /** Asserts referential/primitive equality (===). */
 export declare function assertEquals<T>(actual: T, expected: T, message?: string): void;
 /** Asserts non-equality (!==). */
@@ -559,17 +600,19 @@ export declare function assertStringContainsCanonical(x: unknown, needle: string
 export declare function confirm(...assertions: (() => void)[]): boolean;
 /** Like confirm(), but returns error detail of the first failing assertion */
 /** Like confirm(), but returns the first AssertError encountered for diagnostics. */
-export declare function confirmWithError(...assertions: (() => void)[]): {
-    ok: true;
-} | {
-    ok: false;
-    error: AssertError;
-};
+export declare function confirmWithError(...assertions: (() => void)[]):
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      error: AssertError;
+    };
 /** Run all assertions and aggregate all AssertErrors (continues after failures) */
 /** Runs all assertions and aggregates all AssertErrors (continues after failures). */
 export declare function confirmAll(...assertions: (() => void)[]): {
-    ok: boolean;
-    errors: AssertError[];
+  ok: boolean;
+  errors: AssertError[];
 };
 /**
  * Fluent interface for conditional execution with type narrowing.
@@ -583,33 +626,33 @@ export declare function confirmAll(...assertions: (() => void)[]): {
  * Prefer NarrowingBuilder/AssertChain for compile-time propagation across steps.
  */
 export declare class ConfirmationBuilder {
-    private value;
-    private assertions;
-    constructor(value: unknown, initialAssertions?: (() => void)[]);
-    /**
-     * Add an assertion to check
-     */
-    /** Add an assertion to the builder (non-throwing check first, then re-assert for TS narrowing in callbacks). */
-    check(assertion: () => void): this;
-    /**
-     * Execute the callback if all assertions pass.
-     * Inside the callback, assertions are re-run for TypeScript type narrowing.
-     * @param callback - Function to execute if all assertions pass
-     * @returns The result of the callback, or undefined if assertions fail
-     */
-    /**
-     * Execute callback only when all checks pass. Re-asserts before calling to benefit from TS narrowing inside callback.
-     * Returns undefined if any assertion fails.
-     */
-    run<T>(callback: (value: unknown) => T): T | undefined;
-    /**
-     * Execute the callback if all assertions pass, with a fallback value.
-     * @param callback - Function to execute if all assertions pass
-     * @param fallback - Value to return if assertions fail
-     * @returns The result of the callback, or the fallback value
-     */
-    /** Execute callback if checks pass, otherwise return the provided fallback value. */
-    runOr<T>(callback: (value: unknown) => T, fallback: T): T;
+  private value;
+  private assertions;
+  constructor(value: unknown, initialAssertions?: (() => void)[]);
+  /**
+   * Add an assertion to check
+   */
+  /** Add an assertion to the builder (non-throwing check first, then re-assert for TS narrowing in callbacks). */
+  check(assertion: () => void): this;
+  /**
+   * Execute the callback if all assertions pass.
+   * Inside the callback, assertions are re-run for TypeScript type narrowing.
+   * @param callback - Function to execute if all assertions pass
+   * @returns The result of the callback, or undefined if assertions fail
+   */
+  /**
+   * Execute callback only when all checks pass. Re-asserts before calling to benefit from TS narrowing inside callback.
+   * Returns undefined if any assertion fails.
+   */
+  run<T>(callback: (value: unknown) => T): T | undefined;
+  /**
+   * Execute the callback if all assertions pass, with a fallback value.
+   * @param callback - Function to execute if all assertions pass
+   * @param fallback - Value to return if assertions fail
+   * @returns The result of the callback, or the fallback value
+   */
+  /** Execute callback if checks pass, otherwise return the provided fallback value. */
+  runOr<T>(callback: (value: unknown) => T, fallback: T): T;
 }
 /**
  * Create a confirmation builder for fluent assertion checking with type narrowing.
@@ -638,18 +681,18 @@ export type Guard<V, V2 extends V = V> = (x: V) => asserts x is V2;
  * onValue(x).check(assertDefined).check(assertString).run(s => s.toUpperCase())
  */
 export declare class NarrowingBuilder<V> {
-    private value;
-    private guards;
-    constructor(value: V, initialGuards?: Array<Guard<any, any>>);
-    /** Add a guard that narrows V to V2 */
-    /** Add a guard; returns a new builder typed to the narrowed V2. */
-    check<V2 extends V>(guard: Guard<V, V2>): NarrowingBuilder<V2>;
-    /** Execute callback if all guards pass; returns undefined on failure */
-    /** Execute fn if all guards pass; returns undefined if an AssertError occurs. */
-    run<T>(fn: (v: V) => T): T | undefined;
-    /** Execute callback if all guards pass; otherwise return fallback */
-    /** Execute fn if all guards pass; otherwise return fallback. */
-    runOr<T>(fn: (v: V) => T, fallback: T): T;
+  private value;
+  private guards;
+  constructor(value: V, initialGuards?: Array<Guard<any, any>>);
+  /** Add a guard that narrows V to V2 */
+  /** Add a guard; returns a new builder typed to the narrowed V2. */
+  check<V2 extends V>(guard: Guard<V, V2>): NarrowingBuilder<V2>;
+  /** Execute callback if all guards pass; returns undefined on failure */
+  /** Execute fn if all guards pass; returns undefined if an AssertError occurs. */
+  run<T>(fn: (v: V) => T): T | undefined;
+  /** Execute callback if all guards pass; otherwise return fallback */
+  /** Execute fn if all guards pass; otherwise return fallback. */
+  runOr<T>(fn: (v: V) => T, fallback: T): T;
 }
 /** Start a typed narrowing chain */
 /** Start a typed narrowing chain from an initial value. */
@@ -671,67 +714,67 @@ export declare function onConfirmedWith<V, V1 extends V, V2 extends V1, V3 exten
  * Use .run(cb) or .runOr(cb, fallback) to access the narrowed value.
  */
 export declare class AssertChain<V> {
-    private builder;
-    constructor(builder: NarrowingBuilder<V>);
-    /** Add a custom guard */
-    /** Add a custom guard to the chain. */
-    check<V2 extends V>(guard: Guard<V, V2>): AssertChain<V2>;
-    /** Assert that the value is a string (alias: isString). */
-    string(): AssertChain<V & string>;
-    /** Alias for .string(). */
-    isString(): AssertChain<V & string>;
-    /** Assert that the value is a number (alias: isNumber). */
-    number(): AssertChain<V & number>;
-    /** Alias for .number(). */
-    isNumber(): AssertChain<V & number>;
-    /** Assert that the value is a boolean (alias: isBoolean). */
-    boolean(): AssertChain<V & boolean>;
-    /** Alias for .boolean(). */
-    isBoolean(): AssertChain<V & boolean>;
-    /** Assert that the value is an array (alias: isArray). */
-    array(): AssertChain<V & unknown[]>;
-    /** Alias for .array(). */
-    isArray(): AssertChain<V & unknown[]>;
-    /** Assert that the value is a plain object (alias: isObject). */
-    object(): AssertChain<V & Record<string, unknown>>;
-    /** Alias for .object(). */
-    isObject(): AssertChain<V & Record<string, unknown>>;
-    /** Assert that the value is a Date (alias: isDate). */
-    date(): AssertChain<V & Date>;
-    /** Alias for .date(). */
-    isDate(): AssertChain<V & Date>;
-    /** Assert that the value is not undefined. */
-    defined(): AssertChain<Exclude<V, undefined>>;
-    /** Assert that the value is not null. */
-    nonNull(): AssertChain<Exclude<V, null>>;
-    /** Assert that the value is neither null nor undefined. */
-    present(): AssertChain<Exclude<V, null | undefined>>;
-    /** Alias: value exists (not null/undefined). */
-    exists(): AssertChain<Exclude<V, null | undefined>>;
-    /** Assert that the value is an instance of the given constructor. */
-    instanceOf<C extends new (...args: any[]) => any>(ctor: C): AssertChain<V & InstanceType<C>>;
-    /** Assert that the value is a non-empty string (alias: isNonEmptyString). */
-    nonEmptyString(): AssertChain<V & string>;
-    /** Alias for .nonEmptyString(). */
-    isNonEmptyString(): AssertChain<V & string>;
-    /** Assert that the string's length is >= n. */
-    stringLengthAtLeast(n: number): AssertChain<V & string>;
-    /** Assert that the string's length is <= n. */
-    stringLengthAtMost(n: number): AssertChain<V & string>;
-    /** Assert that the string contains the given substring or matches regex. */
-    stringContains(needle: string | RegExp): AssertChain<V & string>;
-    /** Assert that the value is a non-empty array (alias: isNonEmptyArray). */
-    nonEmptyArray(): AssertChain<V & unknown[]>;
-    /** Alias for .nonEmptyArray(). */
-    isNonEmptyArray(): AssertChain<V & unknown[]>;
-    /** Assert that the array length is exactly len. */
-    arrayLength(len: number): AssertChain<V & unknown[]>;
-    /** Execute callback if all guards pass */
-    /** Execute fn if all chained guards pass; otherwise undefined. */
-    run<T>(fn: (v: V) => T): T | undefined;
-    /** Execute callback if all guards pass; otherwise fallback */
-    /** Execute fn if all guards pass; otherwise return fallback. */
-    runOr<T>(fn: (v: V) => T, fallback: T): T;
+  private builder;
+  constructor(builder: NarrowingBuilder<V>);
+  /** Add a custom guard */
+  /** Add a custom guard to the chain. */
+  check<V2 extends V>(guard: Guard<V, V2>): AssertChain<V2>;
+  /** Assert that the value is a string (alias: isString). */
+  string(): AssertChain<V & string>;
+  /** Alias for .string(). */
+  isString(): AssertChain<V & string>;
+  /** Assert that the value is a number (alias: isNumber). */
+  number(): AssertChain<V & number>;
+  /** Alias for .number(). */
+  isNumber(): AssertChain<V & number>;
+  /** Assert that the value is a boolean (alias: isBoolean). */
+  boolean(): AssertChain<V & boolean>;
+  /** Alias for .boolean(). */
+  isBoolean(): AssertChain<V & boolean>;
+  /** Assert that the value is an array (alias: isArray). */
+  array(): AssertChain<V & unknown[]>;
+  /** Alias for .array(). */
+  isArray(): AssertChain<V & unknown[]>;
+  /** Assert that the value is a plain object (alias: isObject). */
+  object(): AssertChain<V & Record<string, unknown>>;
+  /** Alias for .object(). */
+  isObject(): AssertChain<V & Record<string, unknown>>;
+  /** Assert that the value is a Date (alias: isDate). */
+  date(): AssertChain<V & Date>;
+  /** Alias for .date(). */
+  isDate(): AssertChain<V & Date>;
+  /** Assert that the value is not undefined. */
+  defined(): AssertChain<Exclude<V, undefined>>;
+  /** Assert that the value is not null. */
+  nonNull(): AssertChain<Exclude<V, null>>;
+  /** Assert that the value is neither null nor undefined. */
+  present(): AssertChain<Exclude<V, null | undefined>>;
+  /** Alias: value exists (not null/undefined). */
+  exists(): AssertChain<Exclude<V, null | undefined>>;
+  /** Assert that the value is an instance of the given constructor. */
+  instanceOf<C extends new (...args: any[]) => any>(ctor: C): AssertChain<V & InstanceType<C>>;
+  /** Assert that the value is a non-empty string (alias: isNonEmptyString). */
+  nonEmptyString(): AssertChain<V & string>;
+  /** Alias for .nonEmptyString(). */
+  isNonEmptyString(): AssertChain<V & string>;
+  /** Assert that the string's length is >= n. */
+  stringLengthAtLeast(n: number): AssertChain<V & string>;
+  /** Assert that the string's length is <= n. */
+  stringLengthAtMost(n: number): AssertChain<V & string>;
+  /** Assert that the string contains the given substring or matches regex. */
+  stringContains(needle: string | RegExp): AssertChain<V & string>;
+  /** Assert that the value is a non-empty array (alias: isNonEmptyArray). */
+  nonEmptyArray(): AssertChain<V & unknown[]>;
+  /** Alias for .nonEmptyArray(). */
+  isNonEmptyArray(): AssertChain<V & unknown[]>;
+  /** Assert that the array length is exactly len. */
+  arrayLength(len: number): AssertChain<V & unknown[]>;
+  /** Execute callback if all guards pass */
+  /** Execute fn if all chained guards pass; otherwise undefined. */
+  run<T>(fn: (v: V) => T): T | undefined;
+  /** Execute callback if all guards pass; otherwise fallback */
+  /** Execute fn if all guards pass; otherwise return fallback. */
+  runOr<T>(fn: (v: V) => T, fallback: T): T;
 }
 /** Start a chainable assertion flow */
 /** Start an AssertChain over a value (alias exposed under assert.that). */
@@ -746,47 +789,47 @@ export declare function chainWith<V>(value: V, ...guards: Array<Guard<any, any>>
  * - assert.isString/Number/...: assertion helpers identical to top-level exports
  */
 export declare namespace assert {
-    const that: typeof chain;
-    const onValue: typeof import("./assertroute").onValue;
-    const onConfirmedWith: typeof import("./assertroute").onConfirmedWith;
-    const onConfirmed: typeof import("./assertroute").onConfirmed;
-    const route: typeof assertRoute;
-    const routeAsync: typeof assertRouteAsync;
-    const confirm: typeof import("./assertroute").onConfirmedWith;
-    const confirmBool: typeof import("./assertroute").confirm;
-    const confirmWithError: typeof import("./assertroute").confirmWithError;
-    const confirmAll: typeof import("./assertroute").confirmAll;
-    const isString: typeof assertString;
-    const isNumber: typeof assertNumber;
-    const isBoolean: typeof assertBoolean;
-    const isArray: typeof assertArray;
-    const isObject: typeof assertObject;
-    const isDate: typeof assertDate;
-    const isFunction: typeof assertFunction;
-    const isPromiseLike: typeof assertPromiseLike;
-    const isDefined: typeof assertDefined;
-    const isNonNull: typeof assertNonNull;
-    const isPresent: typeof assertPresent;
-    const exists: typeof assertExists;
-    const instanceOf: typeof assertInstanceOf;
-    const isNonEmptyString: typeof assertNonEmptyString;
-    const stringLengthAtLeast: typeof assertStringLengthAtLeast;
-    const stringLengthAtMost: typeof assertStringLengthAtMost;
-    const stringContains: typeof assertStringContains;
-    const isNonEmptyArray: typeof assertArrayNotEmpty;
-    const arrayLength: typeof assertArrayLength;
-    const isElementHidden: typeof assertElementHidden;
-    const isElementVisible: typeof assertElementVisible;
-    const isPromise: typeof assertPromiseLike;
-    const arrayOnlyNumbers: typeof assertArrayOnlyHasNumbers;
-    const arrayOnlyStrings: typeof assertArrayOnlyHasStrings;
-    const arrayAllTruthy: typeof assertArrayEveryIsTruthy;
-    const arrayAllFalsy: typeof assertArrayEveryIsFalsy;
+  const that: typeof chain;
+  const onValue: typeof import('./assertroute').onValue;
+  const onConfirmedWith: typeof import('./assertroute').onConfirmedWith;
+  const onConfirmed: typeof import('./assertroute').onConfirmed;
+  const route: typeof assertRoute;
+  const routeAsync: typeof assertRouteAsync;
+  const confirm: typeof import('./assertroute').onConfirmedWith;
+  const confirmBool: typeof import('./assertroute').confirm;
+  const confirmWithError: typeof import('./assertroute').confirmWithError;
+  const confirmAll: typeof import('./assertroute').confirmAll;
+  const isString: typeof assertString;
+  const isNumber: typeof assertNumber;
+  const isBoolean: typeof assertBoolean;
+  const isArray: typeof assertArray;
+  const isObject: typeof assertObject;
+  const isDate: typeof assertDate;
+  const isFunction: typeof assertFunction;
+  const isPromiseLike: typeof assertPromiseLike;
+  const isDefined: typeof assertDefined;
+  const isNonNull: typeof assertNonNull;
+  const isPresent: typeof assertPresent;
+  const exists: typeof assertExists;
+  const instanceOf: typeof assertInstanceOf;
+  const isNonEmptyString: typeof assertNonEmptyString;
+  const stringLengthAtLeast: typeof assertStringLengthAtLeast;
+  const stringLengthAtMost: typeof assertStringLengthAtMost;
+  const stringContains: typeof assertStringContains;
+  const isNonEmptyArray: typeof assertArrayNotEmpty;
+  const arrayLength: typeof assertArrayLength;
+  const isElementHidden: typeof assertElementHidden;
+  const isElementVisible: typeof assertElementVisible;
+  const isPromise: typeof assertPromiseLike;
+  const arrayOnlyNumbers: typeof assertArrayOnlyHasNumbers;
+  const arrayOnlyStrings: typeof assertArrayOnlyHasStrings;
+  const arrayAllTruthy: typeof assertArrayEveryIsTruthy;
+  const arrayAllFalsy: typeof assertArrayEveryIsFalsy;
 }
 export type AssertErrorTrapOptions = {
-    onError?: (err: AssertError) => void;
-    /** When true (or returns true), unhandled AssertErrors are suppressed (prevent process/page break). */
-    suppress?: boolean | ((err: AssertError) => boolean);
+  onError?: (err: AssertError) => void;
+  /** When true (or returns true), unhandled AssertErrors are suppressed (prevent process/page break). */
+  suppress?: boolean | ((err: AssertError) => boolean);
 };
 /**
  * Install a best-effort global trap for unhandled AssertErrors in Node and browsers.
@@ -797,6 +840,6 @@ export type AssertErrorTrapOptions = {
  * This helper is provided for last-resort safety nets and diagnostics.
  */
 export declare function installAssertErrorTrap(options?: AssertErrorTrapOptions): {
-    readonly uninstall: () => void;
+  readonly uninstall: () => void;
 };
 //# sourceMappingURL=assertroute.d.ts.map
