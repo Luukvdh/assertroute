@@ -515,22 +515,6 @@ export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) =>
   if (!fn) {
     return fallback;
   }
-  if (fn.length === 0) {
-    try {
-      return (fn as () => T)();
-    } catch (e) {
-      if (e instanceof AssertError) {
-        onError?.(e);
-        return fallback;
-      }
-      if (catchNonAssertErrors) {
-        const err = e instanceof Error ? e : new Error(String(e));
-        onError?.(new AssertError(err.message, { cause: err } as any));
-        return fallback;
-      }
-      throw e; // rethrow non-assert errors by default
-    }
-  }
 
   // If the function has parameters, return a wrapped function
   return ((...args: A) => {
@@ -547,6 +531,30 @@ export function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) =>
         return fallback;
       }
       throw e; // rethrow non-assert errors by default
+    }
+  }) as (...args: A) => T;
+}
+
+/**
+ * assertRouteFn: Always returns a wrapped function that converts AssertError into a fallback,
+ * regardless of the target function's arity. Use this to avoid the extra `()` call for zero-arg fns.
+ */
+export function assertRouteFn<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options: AssertRouteOptions = {}): (...args: A) => T {
+  const { onError, catchNonAssertErrors = false } = options;
+  return ((...args: A) => {
+    try {
+      return fn(...args);
+    } catch (e) {
+      if (e instanceof AssertError) {
+        onError?.(e);
+        return fallback;
+      }
+      if (catchNonAssertErrors) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        onError?.(new AssertError(err.message, { cause: err } as any));
+        return fallback;
+      }
+      throw e;
     }
   }) as (...args: A) => T;
 }
@@ -622,6 +630,30 @@ export function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: 
   }) as (...args: A) => Promise<T>;
 }
 
+/**
+ * fnAsync: Always returns an async wrapper function that converts AssertError into a fallback,
+ * regardless of the target function's arity. Mirrors `assertRouteFn` for async functions.
+ */
+export function fnAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options: AssertRouteOptions = {}): (...args: A) => Promise<T> {
+  const { onError, catchNonAssertErrors = false } = options;
+  return (async (...args: A) => {
+    try {
+      return await fn(...args);
+    } catch (e) {
+      if (e instanceof AssertError) {
+        onError?.(e);
+        return fallback;
+      }
+      if (catchNonAssertErrors) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        onError?.(new AssertError(err.message, { cause: err } as any));
+        return fallback;
+      }
+      throw e;
+    }
+  }) as (...args: A) => Promise<T>;
+}
+
 // ===============
 // Small extras for strings and arrays (assert*)
 // ===============
@@ -646,6 +678,26 @@ export function assertNonEmptyString(x: unknown, message = 'Expected non-empty s
 export function assertArrayNotEmpty<T = unknown>(x: unknown, message = 'Expected non-empty array'): asserts x is T[] {
   assertArray<T>(x, message);
   assert((x as T[]).length > 0, message);
+}
+
+/** Asserts that x is a string and non-empty (length > 0). */
+export function assertNonEmptyStringStrict(x: unknown, message = 'Expected non-empty string'): asserts x is string {
+  assert(isNonEmptyString(x), message);
+}
+
+/** Asserts that x is an array and non-empty (length > 0). */
+export function assertNonEmptyArray<T = unknown>(x: unknown, message = 'Expected non-empty array'): asserts x is T[] {
+  assert(isNonEmptyArray<T>(x), message);
+}
+
+/** Asserts that x is a plain object with at least one key. */
+export function assertNonEmptyRecordStrict(x: unknown, message = 'Expected non-empty object'): asserts x is Record<string, unknown> {
+  assert(isNonEmptyRecord(x), message);
+}
+
+/** Asserts that x is a finite number not equal to zero. */
+export function assertNonZeroNumber(x: unknown, message = 'Expected non-zero number'): asserts x is number {
+  assert(isNonZeroNumber(x), message);
 }
 
 // Unified "non-empty" runtime checks + type guards
@@ -684,11 +736,9 @@ export function isNonZeroNumber(x: unknown): x is number {
 }
 
 /** Composite guard: narrows to a union of non-empty primitives/structures. */
-export type NonEmpty = string | any[] | Record<string, unknown> | number | boolean;
+export type NonEmpty = string | any[] | Record<string, unknown> | number;
 export function isNonEmpty(x: unknown): x is NonEmpty {
-  isNotNil(x);
-  isTruthy(x);
-  return isNonEmptyString(x) || isNonEmptyArray(x) || isNonEmptyRecord(x) || isNonZeroNumber(x) || typeof x === 'boolean';
+  return isNonEmptyString(x) || isNonEmptyArray(x) || isNonEmptyRecord(x) || isNonZeroNumber(x);
 }
 
 // Re-export type for consumers to refine catches
@@ -964,6 +1014,19 @@ export function assertArrayEveryIsTruthy<T = unknown>(x: unknown, message?: stri
   );
 }
 
+/** Assert an array has all unique items by strict equality (===). */
+export function assertArrayUnique<T = unknown>(x: unknown, message = 'Expected array with unique items'): asserts x is T[] {
+  assertArray<T>(x, message);
+  const arr = x as any[];
+  const seen = new Set<any>();
+  for (const item of arr) {
+    if (seen.has(item)) {
+      assert(false, message);
+    }
+    seen.add(item);
+  }
+}
+
 /** Asserts that x is an array including an element for which predicate returns true. */
 export function assertArrayIncludesCondition<T = unknown>(x: unknown, predicate: (item: unknown) => boolean, message?: string): asserts x is T[] {
   assertArray<T>(x, message ?? `Expected array`);
@@ -1142,6 +1205,207 @@ export function assertDateBetween(x: unknown, min: Date, max: Date, message?: st
 export function assertDateYear(x: unknown, year: number, message?: string): asserts x is Date {
   assertDate(x, message ?? `Expected Date`);
   assert((x as Date).getFullYear() === year, message ?? `Expected year ${year}`);
+}
+
+// ---- Date Formats & Conversion ----
+
+/** Supported canonical date formats */
+export type DateFormat = 'ISO' | 'UNIX_MS' | 'UNIX_S' | 'RFC_2822';
+
+/** Asserts that the input matches the expected date format shape. */
+export function assertDateFormat(input: unknown, format: DateFormat, message?: string): void {
+  switch (format) {
+    case 'ISO': {
+      assert(typeof input === 'string', message ?? 'Expected ISO string');
+      const s = input as string;
+      // Basic ISO 8601 test via Date.parse consistency and presence of time components
+      const d = new Date(s);
+      assert(!Number.isNaN(d.getTime()), message ?? 'Invalid ISO date');
+      break;
+    }
+    case 'RFC_2822': {
+      assert(typeof input === 'string', message ?? 'Expected RFC 2822 string');
+      const s = input as string;
+      const t = Date.parse(s);
+      assert(Number.isFinite(t), message ?? 'Invalid RFC 2822 date');
+      break;
+    }
+    case 'UNIX_MS': {
+      assert(typeof input === 'number' && Number.isFinite(input as number), message ?? 'Expected UNIX ms number');
+      const d = new Date(input as number);
+      assert(!Number.isNaN(d.getTime()), message ?? 'Invalid UNIX ms timestamp');
+      break;
+    }
+    case 'UNIX_S': {
+      assert(typeof input === 'number' && Number.isFinite(input as number), message ?? 'Expected UNIX s number');
+      const d = new Date((input as number) * 1000);
+      assert(!Number.isNaN(d.getTime()), message ?? 'Invalid UNIX s timestamp');
+      break;
+    }
+  }
+}
+
+/** Converts input of a given format to a Date (throws AssertError on failure). */
+export function DateFromFormat(format: DateFormat, input: unknown, message?: string): Date {
+  assertDateFormat(input, format, message);
+  switch (format) {
+    case 'ISO':
+    case 'RFC_2822':
+      return new Date(input as string);
+    case 'UNIX_MS':
+      return new Date(input as number);
+    case 'UNIX_S':
+      return new Date((input as number) * 1000);
+  }
+}
+
+/** Convenience: ensure date-like input, accepting several formats. */
+export function DateEnsure(input: unknown, message?: string, formats: DateFormat[] = ['ISO', 'UNIX_MS', 'UNIX_S', 'RFC_2822']): Date {
+  for (const f of formats) {
+    try {
+      return DateFromFormat(f, input);
+    } catch (e) {
+      if (!(e instanceof AssertError)) throw e;
+    }
+  }
+  throw new AssertError(message ?? 'Unrecognized date format', { got: typeof input });
+}
+
+// ---- Date ordering and relative-to-now ----
+
+export function assertDateBefore(x: unknown, than: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getTime() < than.getTime(), message ?? 'Expected date to be before reference');
+}
+
+export function assertDateAfter(x: unknown, than: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getTime() > than.getTime(), message ?? 'Expected date to be after reference');
+}
+
+export function assertDateOnOrBefore(x: unknown, than: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getTime() <= than.getTime(), message ?? 'Expected date to be on or before reference');
+}
+
+export function assertDateOnOrAfter(x: unknown, than: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getTime() >= than.getTime(), message ?? 'Expected date to be on or after reference');
+}
+
+export function assertDateBetweenInclusive(x: unknown, min: Date, max: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  const t = (x as Date).getTime();
+  assert(t >= min.getTime() && t <= max.getTime(), message ?? 'Expected date within inclusive range');
+}
+
+export function assertDateBetweenExclusive(x: unknown, min: Date, max: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  const t = (x as Date).getTime();
+  assert(t > min.getTime() && t < max.getTime(), message ?? 'Expected date within exclusive range');
+}
+
+export function assertDateInPast(x: unknown, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getTime() < Date.now(), message ?? 'Expected date in the past');
+}
+
+export function assertDateInFuture(x: unknown, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getTime() > Date.now(), message ?? 'Expected date in the future');
+}
+
+export function assertDateWithinPast(x: unknown, ms: number, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assertNumber(ms, 'Expected window in ms');
+  const now = Date.now();
+  const t = (x as Date).getTime();
+  assert(t <= now && t >= now - ms, message ?? 'Expected date within past window');
+}
+
+export function assertDateWithinFuture(x: unknown, ms: number, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assertNumber(ms, 'Expected window in ms');
+  const now = Date.now();
+  const t = (x as Date).getTime();
+  assert(t >= now && t <= now + ms, message ?? 'Expected date within future window');
+}
+
+// ---- Date component equality ----
+
+export function assertDateSameYear(x: unknown, other: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  assert((x as Date).getFullYear() === other.getFullYear(), message ?? 'Expected same year');
+}
+
+export function assertDateSameMonth(x: unknown, other: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  const a = x as Date;
+  assert(a.getFullYear() === other.getFullYear() && a.getMonth() === other.getMonth(), message ?? 'Expected same month');
+}
+
+export function assertDateSameDay(x: unknown, other: Date, message?: string): asserts x is Date {
+  assertDate(x, message ?? 'Expected Date');
+  const a = x as Date;
+  assert(a.getFullYear() === other.getFullYear() && a.getMonth() === other.getMonth() && a.getDate() === other.getDate(), message ?? 'Expected same day');
+}
+
+// ---- TimeSpan type and helpers ----
+
+export type TimeSpan = { ms: number };
+
+export function TimeSpanFromMs(ms: number): TimeSpan {
+  assertNumber(ms, 'Expected ms number');
+  return { ms };
+}
+export function TimeSpanFromSeconds(s: number): TimeSpan {
+  assertNumber(s, 'Expected seconds number');
+  return { ms: s * 1000 };
+}
+export function TimeSpanFromMinutes(m: number): TimeSpan {
+  assertNumber(m, 'Expected minutes number');
+  return { ms: m * 60_000 };
+}
+export function TimeSpanFromHours(h: number): TimeSpan {
+  assertNumber(h, 'Expected hours number');
+  return { ms: h * 3_600_000 };
+}
+export function TimeSpanFromDays(d: number): TimeSpan {
+  assertNumber(d, 'Expected days number');
+  return { ms: d * 86_400_000 };
+}
+
+export function DateTimeSpanBetween(a: Date, b: Date): TimeSpan {
+  assertDate(a, 'Expected Date a');
+  assertDate(b, 'Expected Date b');
+  return { ms: Math.abs(a.getTime() - b.getTime()) };
+}
+
+export function assertDateTimeSpanLessThan(a: Date, b: Date, limit: TimeSpan, message?: string): void {
+  const span = DateTimeSpanBetween(a, b);
+  assert(span.ms < limit.ms, message ?? 'Expected timespan less than limit');
+}
+
+export function assertDateTimeSpanLessOrEqual(a: Date, b: Date, limit: TimeSpan, message?: string): void {
+  const span = DateTimeSpanBetween(a, b);
+  assert(span.ms <= limit.ms, message ?? 'Expected timespan <= limit');
+}
+
+export function assertDateBetweenWithin(a: Date, b: Date, min: TimeSpan, max: TimeSpan, message?: string): void {
+  const span = DateTimeSpanBetween(a, b);
+  assert(span.ms >= min.ms && span.ms <= max.ms, message ?? 'Expected timespan within bounds');
+}
+
+export function DateAddSpan(d: Date, span: TimeSpan): Date {
+  assertDate(d, 'Expected Date');
+  assertNumber(span?.ms as number, 'Expected TimeSpan.ms');
+  return new Date(d.getTime() + span.ms);
+}
+
+export function DateSubtractSpan(d: Date, span: TimeSpan): Date {
+  assertDate(d, 'Expected Date');
+  assertNumber(span?.ms as number, 'Expected TimeSpan.ms');
+  return new Date(d.getTime() - span.ms);
 }
 
 // ---- Nullish / Boolean convenience ----
@@ -1982,10 +2246,10 @@ export function chainWith<V>(value: V, ...guards: Array<Guard<any, any>>): Asser
 }
 
 // ===============
-// assert facade via namespace merging on function assert
+// vouch facade (preferred) and alias
 // ===============
 
-// Alias outer symbols to avoid shadowing inside namespace
+// Alias outer symbols to avoid shadowing inside object literal
 const __chain = chain;
 const __onValue = onValue;
 const __onConfirmedWith = onConfirmedWith;
@@ -2008,74 +2272,141 @@ const __assertNonNull = assertNonNull;
 const __assertPresent = assertPresent;
 const __assertExists = assertExists;
 const __assertInstanceOf = assertInstanceOf;
-const __assertNonEmptyString = assertNonEmptyString;
-const __assertStringLengthAtLeast = assertStringLengthAtLeast;
-const __assertStringLengthAtMost = assertStringLengthAtMost;
-const __assertStringContains = assertStringContains;
-const __assertArrayNotEmpty = assertArrayNotEmpty;
-const __assertArrayLength = assertArrayLength;
-const __assertElementHidden = assertElementHidden;
-const __assertElementVisible = assertElementVisible;
 
-/**
- * Facade namespace offering a concise API:
- * - assert.that(x) -> AssertChain
- * - assert.route / assert.routeAsync / assert.confirm*
- * - assert.isString/Number/...: assertion helpers identical to top-level exports
- */
-export namespace assert {
-  // chain starter
-  export const that = __chain;
-  export const onValue = __onValue;
-  export const onConfirmedWith = __onConfirmedWith;
-  export const onConfirmed = __onConfirmed;
+// Preferred facade without using the global name "assert": voucher
+// Groups the same helpers under a safer, less-colliding symbol.
+// Preferred facade without using the global name "assert": vouch
+export const vouch = {
+  // chains and confirmation
+  that: __chain,
+  onValue: __onValue,
+  onConfirmedWith: __onConfirmedWith,
+  onConfirmed: __onConfirmed,
   // routes
-  export const route = __assertRoute;
-  export const routeAsync = __assertRouteAsync;
-  // confirm utils
-  // Prefer builder-style under assert.confirm; boolean variant available as confirmBool
-  export const confirm = __onConfirmedWith;
-  export const confirmBool = __confirm;
-  export const confirmWithError = __confirmWithError;
-  export const confirmAll = __confirmAll;
+  route: __assertRoute,
+  routeAsync: __assertRouteAsync,
+  // short alias for async routing
+  async: __assertRouteAsync,
+  // always-function wrapper variant
+  routeFn: assertRouteFn,
+  // short alias to blend into function declarations
+  fn: assertRouteFn,
+  // always-function async wrapper variant
+  fnAsync: fnAsync,
+  // confirms
+  confirm: __onConfirmedWith,
+  confirmBool: __confirm,
+  confirmWithError: __confirmWithError,
+  confirmAll: __confirmAll,
   // assertions
-  export const isString = __assertString;
-  export const isNumber = __assertNumber;
-  export const isBoolean = __assertBoolean;
-  export const isArray = __assertArray;
-  export const isObject = __assertObject;
-  export const isDate = __assertDate;
-  export const isFunction = __assertFunction;
-  export const isPromiseLike = __assertPromiseLike;
-  export const isDefined = __assertDefined;
-  export const isNonNull = __assertNonNull;
-  export const isPresent = __assertPresent;
-  export const exists = __assertExists;
-  export const instanceOf = __assertInstanceOf;
-  export const isNonEmptyString = __assertNonEmptyString;
-  export const stringLengthAtLeast = __assertStringLengthAtLeast;
-  export const stringLengthAtMost = __assertStringLengthAtMost;
-  export const stringContains = __assertStringContains;
-  export const isNonEmptyArray = __assertArrayNotEmpty;
-  export const arrayLength = __assertArrayLength;
-  // Element visibility assertions (naming consistent with other is* assertion exports)
-  export const isElementHidden = __assertElementHidden;
-  export const isElementVisible = __assertElementVisible;
-  // Back-compat alias: promise
-  export const isPromise = __assertPromiseLike;
-  // Array content helpers (ergonomic aliases)
-  export const arrayOnlyNumbers = assertArrayOnlyHasNumbers;
-  export const arrayOnlyStrings = assertArrayOnlyHasStrings;
-  export const arrayAllTruthy = assertArrayEveryIsTruthy;
-  export const arrayAllFalsy = assertArrayEveryIsFalsy;
+  // Core primitives (single canonical names)
+  assertString: __assertString,
+  assertNumber: __assertNumber,
+  assertBoolean: __assertBoolean,
+  assertArray: __assertArray,
+  assertObject: __assertObject,
+  assertDate: __assertDate,
+  assertFunction: __assertFunction,
+  assertPromiseLike: __assertPromiseLike,
+  assertDefined: __assertDefined,
+  assertNonNull: __assertNonNull,
+  assertPresent: __assertPresent,
+  assertExists: __assertExists,
+  assertInstanceOf: __assertInstanceOf,
+  // value-returning ensure variants (single alias each)
+  IsString: expectString,
+  IsNumber: expectNumber,
+  IsBoolean: expectBoolean,
+  IsArray: expectArray,
+  IsObject: expectObject,
+  IsDate: expectDate,
+  // composed value-returning helpers built on assert-then-return
+  IsNumberIsPositive: (x: unknown, message?: string): number => {
+    assertNumberPositive(x, message);
+    return x as number;
+  },
+  IsArrayNotEmpty: <T = unknown>(x: unknown, message?: string): T[] => {
+    assertArrayNotEmpty<T>(x, message);
+    return x as T[];
+  },
+  IsStringContains: (x: unknown, needle: string | RegExp, message?: string): string => {
+    assertStringContains(x, needle, message);
+    return x as string;
+  },
+  IsDateBetweenInclusive: (x: unknown, min: Date, max: Date, message?: string): Date => {
+    assertDateBetween(x, min, max, message);
+    return x as Date;
+  },
+  // simple confirmation of single assertion -> boolean
+  confirmOne: (check: () => void): boolean => {
+    try {
+      check();
+      return true;
+    } catch (e) {
+      if (e instanceof AssertError) return false;
+      throw e;
+    }
+  },
+} as const;
+
+// Single-letter alias for convenience
+export const v = vouch;
+
+// ===============
+// Catalog, Report, and primitive mustBe thunks
+// ===============
+
+export type AssertionEntry = {
+  name: string;
+  check: (v: unknown) => void;
+  category?: 'string' | 'number' | 'array' | 'object' | 'date' | 'boolean' | 'element' | 'misc';
+};
+
+export const catalog: ReadonlyArray<AssertionEntry> = [
+  // strings
+  { name: 'assertString', check: (v) => assertString(v), category: 'string' },
+  { name: 'assertNonEmptyString', check: (v) => assertNonEmptyString(v), category: 'string' },
+  { name: 'assertStringContains', check: (v) => assertStringContains(v, ''), category: 'string' },
+  // numbers
+  { name: 'assertNumber', check: (v) => assertNumber(v), category: 'number' },
+  { name: 'assertNumberPositive', check: (v) => assertNumberPositive(v), category: 'number' },
+  { name: 'assertNumberNotZero', check: (v) => assertNumberNotZero(v), category: 'number' },
+  // arrays
+  { name: 'assertArray', check: (v) => assertArray(v), category: 'array' },
+  { name: 'assertArrayNotEmpty', check: (v) => assertArrayNotEmpty(v), category: 'array' },
+  // objects
+  { name: 'assertObject', check: (v) => assertObject(v), category: 'object' },
+  // dates
+  { name: 'assertDate', check: (v) => assertDate(v), category: 'date' },
+  // booleans
+  { name: 'assertBoolean', check: (v) => assertBoolean(v), category: 'boolean' },
+  // elements
+  { name: 'assertElement', check: (v) => assertElement(v), category: 'element' },
+] as const;
+
+export function report(check: () => void): { ok: true } | { ok: false; error: AssertError } {
+  try {
+    check();
+    return { ok: true } as const;
+  } catch (e) {
+    if (e instanceof AssertError) return { ok: false, error: e } as const;
+    throw e;
+  }
 }
-(assert as any).instanceOf = <C extends new (...args: any[]) => any>(x: unknown, ctor: C, message?: string) => assertInstanceOf(x, ctor, message);
-(assert as any).isNonEmptyString = (x: unknown, message?: string) => assertNonEmptyString(x, message);
-(assert as any).stringLengthAtLeast = (x: unknown, n: number, message?: string) => assertStringLengthAtLeast(x, n, message);
-(assert as any).stringLengthAtMost = (x: unknown, n: number, message?: string) => assertStringLengthAtMost(x, n, message);
-(assert as any).stringContains = (x: unknown, needle: string | RegExp, message?: string) => assertStringContains(x, needle, message);
-(assert as any).isNonEmptyArray = (x: unknown, message?: string) => assertArrayNotEmpty(x, message);
-(assert as any).arrayLength = (x: unknown, len: number, message?: string) => assertArrayLength(x, len, message);
+
+export const mustBe = {
+  string: (v: unknown, msg?: string) => () => assertString(v, msg),
+  number: (v: unknown, msg?: string) => () => assertNumber(v, msg),
+  array: (v: unknown, msg?: string) => () => assertArray(v, msg),
+  object: (v: unknown, msg?: string) => () => assertObject(v, msg),
+  boolean: (v: unknown, msg?: string) => () => assertBoolean(v, msg),
+  date: (v: unknown, msg?: string) => () => assertDate(v, msg),
+} as const;
+
+// Attach catalog/report/mustBe under v facade for discoverability
+(v as any).catalog = catalog;
+(v as any).report = report;
+(v as any).mustBe = mustBe;
 
 // ===============
 // Unhandled AssertError trap installer (optional and environment-specific)

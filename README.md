@@ -1,29 +1,94 @@
-**TL;DR:** here’s a compact **README.md** you can drop in.Includes: what each **dist** file is for, how to **import** (ESM/CJS/Browser), and an indexed list of **kept APIs** grouped by category.
+# assertroute
 
-### Plan
+Tiny, fast runtime assertions with clean TypeScript narrowing — plus a block-scoped “route” wrapper that converts assertion failures into safe default returns.
 
-- Title + one-liner.
-- Install + import usage (ESM, CJS, Browser global).
-- Dist files explained.
-- Core patterns with tiny examples.
-- API index (grouped, terse).
-- Notes on tree-shaking & types.
+Validate at the top; write clear, assumption-friendly logic in the middle. If any `assert*` throws an `AssertError` inside the route, we stop and return your default. Fewer `try/catch`, fewer defensive `if` checks, better narrowing.
 
-Plain function `# assertroute  Tiny, fast runtime assertions with clean TypeScript narrowing.    One source file, multiple outputs (ESM/CJS/IIFE).  ---  ## Install  ```bash  npm i assertroute   `
+Have you always dislikes counting the brackets of you nested conditions? There has got to be a better way!
+
+````
+
+```ts
+function findClientTags(cdata: any, allclients: any[]): string[] {
+  if (!cdata || !Array.isArray(cdata.tags) || cdata.tags.length === 0) return [];
+  try {
+    result = allclients.filter((x) => x.tagsShared?.some((t) => cdata.tags.includes(t))).map((x) => x.name);
+  } catch (e) {
+    if (e instanceof Error) {
+      // ad-hoc fallback branches...
+      result = [];
+    }
+  }
+  if (!result || result.length === 0) {
+---
+
+## Install
+
+```bash
+npm i assertroute
+```
 
 ## Usage
 
 ### ESM (Node/Bundlers)
 
-Plain function ``   import {    AssertError,    assert, assertRoute, assertRouteAsync, routeWith, isValid,    assertString, assertArray, assertObject,  } from 'assertroute';  function greet(x: unknown) {    assertString(x);    return `hi ${x}`;  }  const safeGreet = assertRoute('oops', () => greet('Luuk'));      // returns string or 'oops'  const safeFn     = assertRoute('oops', (name: unknown) => greet(name)); // returns wrapped fn   ``
+```ts
+import { v } from 'assertroute';
 
-### CommonJS (Node)
+function greet(x: unknown) {
+  v.assertString(x);
+  return `hi ${x}`;
+}
 
-Plain function `const {    AssertError, assert, assertRoute, assertArray,  } = require('assertroute');   `
+// Simple: set default return value when asserts throw
+const safeGreet = v.route('oops', () => greet('Luuk'));
 
-### Browser (IIFE global)
+// An example using v.fn to wrap a
 
-Plain function ``   </div><div class="slate-code_line">  const { assertRoute, assertString } = window.assertroute;</div><div class="slate-code_line">  const say = (x) => { assertString(x); return `hi ${x}`; };</div><div class="slate-code_line">  console.log(assertRoute(&#x27;fallback&#x27;, () => say(&#x27;Luuk&#x27;))); // "hi Luuk"</div><div class="slate-code_line">   ``
+
+### Before (defensive checks and try/catch)
+
+```ts
+[];
+  try {
+    result = allclients.filter((x) => x.tagsShared?.some((t) => cdata.tags.includes(t))).map((x) => x.name);
+  } catch (e) {
+    if (e instanceof Error) {
+  if (!cdata?.tag) return result;
+  return ok ? 4 : 5;
+}
+```
+
+### After (assert-first, block-scoped route)
+
+```ts
+import { v } from 'assertroute';
+
+const findClientTags = v.fn<string[]>([], (cdata: unknown, allclients: unknown[]) => {
+  v.assertObject(cdata);
+  v.assertArray(allclients);
+  v.assertArray(cdata.tags, 'Expected tags array');
+  v.assertArrayNotEmpty(cdata.tags, 'Tags must not be empty');
+
+  const tags = cdata.tags as string[];
+  v.assertArrayOnlyHasStrings(tags, 'Tags must be strings');
+
+  // From here, TypeScript trusts the narrowing;
+  // logic reads clearly with fewer conditionals.
+  return allclients.filter((x) => Array.isArray(x.tagsShared) && x.tagsShared.some((t) => tags.includes(t))).map((x) => x.name);
+});
+
+// Usage
+const names = findClientTags(input, clients); // [] when any assert fails
+```
+
+Key benefits:
+
+- Strong narrowing: thrown `AssertError` prunes invalid paths, so TS treats code after asserts as safe.
+- Declarative checks: catalog of strict `assert*` helpers replaces scattered `if` guards.
+- Localized failure handling: one default return per route instead of many ad-hoc catch/fallbacks.
+
+---
 
 ## Dist files
 
@@ -43,15 +108,33 @@ Plain function `function toUpper(x: unknown) {    assertString(x);    return x.t
 
 ### 2) Route with fallback
 
-Plain function `const value = assertRoute(0, () => {    assertNumber(Math.random());    return 42;  }); // 42 or 0 on AssertError   `
+```ts
+const value = v.route(0, () => {
+  v.assertNumber(Math.random());
+  return 42;
+}); // 42 or 0 on if assert failed with AssertError
+```
 
 ### 3) Async route
 
-Plain function `const get = assertRouteAsync(null, async () => {    const r = await fetch('/data'); assert(r.ok);    return await r.json();  }); // Promise   `
+```ts
+const get = v.async(null, async () => {
+  const r = await fetch('/data');
+  v.assert(r.ok);
+  return await r.json();
+}); // Promise
+```
 
 ### 4) Boolean validator for N asserts
 
-Plain function `const isValidUser = isValid<[unknown]>(    (x) => assertObject(x),    (x) => assertString((x as any).name),  );  isValidUser({ name: 'Luuk' }) // true  isValidUser({ name: 42 })     // false   `
+```ts
+import { v } from 'assertroute';
+const isValidUser = v.confirmOne(() => {
+  v.assertObject({ name: 'Luuk' });
+  v.assertString('Luuk');
+});
+// true when single assertion passes
+```
 
 ## API index (kept)
 
@@ -101,6 +184,7 @@ Plain function `const isValidUser = isValid<[unknown]>(    (x) => assertObject(x
 - assertArrayOnlyHasObjects, assertArrayOnlyHasStrings, assertArrayOnlyHasNumbers
 - assertArrayEveryIsFalsy, assertArrayEveryIsTruthy
 - assertArrayIncludesCondition
+- assertArrayUnique
 - Alias: assertIsArrayNotEmpty
 - **Consistency** (your addition): arrayIsConsistent _(or assertArrayConsistent\* if you used that naming)_
 
@@ -153,4 +237,7 @@ Plain function `const isValidUser = isValid<[unknown]>(    (x) => assertObject(x
 - **Tree-shaking**: builds are side-effect free. Import only what you use.
 - **Browser global**: IIFE exposes window.assertroute with the full API.
 
+Pro tip: keep one canonical name per helper. It improves discoverability, docs, and IntelliSense — no alias sprawl.
+
 Happy asserting.
+````

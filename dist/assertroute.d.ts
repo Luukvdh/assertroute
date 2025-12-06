@@ -10,9 +10,9 @@
  * - info: optional extra context provided by the assertion site
  */
 export declare class AssertError extends Error {
-  readonly code: 'ASSERT_FAILED';
-  readonly info?: Record<string, unknown>;
-  constructor(message: string, info?: Record<string, unknown>);
+    readonly code: "ASSERT_FAILED";
+    readonly info?: Record<string, unknown>;
+    constructor(message: string, info?: Record<string, unknown>);
 }
 /**
  * Set or clear a global onError handler for all assertion failures.
@@ -266,8 +266,8 @@ export declare function expectDate(x: unknown, message?: string): Date;
  * - catchNonAssertErrors: when true, also catch and convert non-AssertError errors to fallback
  */
 export type AssertRouteOptions = {
-  onError?: (err: AssertError) => void;
-  catchNonAssertErrors?: boolean;
+    onError?: (err: AssertError) => void;
+    catchNonAssertErrors?: boolean;
 };
 /**
  * Execute a function in an assertion route. Any AssertError thrown inside is caught
@@ -290,6 +290,11 @@ export type AssertRouteOptions = {
  */
 export declare function assertRoute<T>(fallback: T, fn: () => T, options?: AssertRouteOptions): T;
 export declare function assertRoute<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
+/**
+ * assertRouteFn: Always returns a wrapped function that converts AssertError into a fallback,
+ * regardless of the target function's arity. Use this to avoid the extra `()` call for zero-arg fns.
+ */
+export declare function assertRouteFn<T, A extends any[]>(fallback: T, fn: (...args: A) => T, options?: AssertRouteOptions): (...args: A) => T;
 /**
  * Curry-style helper: returns a function wrapping any target function so that
  * assertion failures return the given fallback.
@@ -315,6 +320,11 @@ export declare function routeWith<T>(fallback: T, options?: AssertRouteOptions):
 export declare function assertRouteAsync<T>(fallback: T, fn: () => Promise<T>, options?: AssertRouteOptions): Promise<T>;
 export declare function assertRouteAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions): (...args: A) => Promise<T>;
 /**
+ * fnAsync: Always returns an async wrapper function that converts AssertError into a fallback,
+ * regardless of the target function's arity. Mirrors `assertRouteFn` for async functions.
+ */
+export declare function fnAsync<T, A extends any[]>(fallback: T, fn: (...args: A) => Promise<T>, options?: AssertRouteOptions): (...args: A) => Promise<T>;
+/**
  * Asserts that x is a string with length > 0.
  *
  * Narrowing:
@@ -328,6 +338,14 @@ export declare function assertNonEmptyString(x: unknown, message?: string): asse
  * - On success, narrows x to T[].
  */
 export declare function assertArrayNotEmpty<T = unknown>(x: unknown, message?: string): asserts x is T[];
+/** Asserts that x is a string and non-empty (length > 0). */
+export declare function assertNonEmptyStringStrict(x: unknown, message?: string): asserts x is string;
+/** Asserts that x is an array and non-empty (length > 0). */
+export declare function assertNonEmptyArray<T = unknown>(x: unknown, message?: string): asserts x is T[];
+/** Asserts that x is a plain object with at least one key. */
+export declare function assertNonEmptyRecordStrict(x: unknown, message?: string): asserts x is Record<string, unknown>;
+/** Asserts that x is a finite number not equal to zero. */
+export declare function assertNonZeroNumber(x: unknown, message?: string): asserts x is number;
 export declare function isNonEmptyString(x: unknown): x is string;
 export declare function isNonEmptyArray<T = unknown>(x: unknown): x is T[];
 export declare function objectHasNoTruthyValues(x: unknown, message?: string, info?: Record<string, unknown>): boolean;
@@ -335,6 +353,21 @@ export declare function objectHasNoFalseyValues(x: unknown, message?: string, in
 export declare function isNonEmptyRecord(x: unknown): x is Record<string, unknown>;
 export declare function isNonZeroNumber(x: unknown): x is number;
 /** Composite guard: narrows to a union of non-empty primitives/structures. */
+export type NonEmpty = string | any[] | Record<string, unknown> | number;
+export declare function isNonEmpty(x: unknown): x is NonEmpty;
+/** Re-export: consumers can import { AssertionError } name for AssertError. */
+export type { AssertError as AssertionError };
+/**
+ * Example:
+ * const name = maybeName as unknown;
+ * assertString(name);
+ * // name is string here
+ *
+ * const result = assertRoute(() => {
+ *   assertArrayNotEmpty(input, "input required");
+ *   return input.length;
+ * }, 0);
+ */
 /** Asserts that x is a string with exact length `len`. */
 export declare function assertStringLength(x: unknown, len: number, message?: string): asserts x is string;
 /** Asserts that x is a string with length >= `n`. */
@@ -401,16 +434,15 @@ export declare function assertArrayOnlyHasNumbers<T = unknown>(x: unknown, messa
 export declare function assertArrayEveryIsFalsy<T = unknown>(x: unknown, message?: string): asserts x is T[];
 /** Asserts that x is an array and every element is truthy. */
 export declare function assertArrayEveryIsTruthy<T = unknown>(x: unknown, message?: string): asserts x is T[];
+/** Assert an array has all unique items by strict equality (===). */
+export declare function assertArrayUnique<T = unknown>(x: unknown, message?: string): asserts x is T[];
 /** Asserts that x is an array including an element for which predicate returns true. */
 export declare function assertArrayIncludesCondition<T = unknown>(x: unknown, predicate: (item: unknown) => boolean, message?: string): asserts x is T[];
 /** Asserts that obj is a plain object containing the provided key. */
 export declare function assertHasKey<O extends Record<string, unknown>, K extends string>(obj: unknown, key: K, message?: string): asserts obj is O & Record<K, unknown>;
 /** Asserts that obj is a plain object containing all provided keys. */
-export declare function assertHasKeys<O extends Record<string, unknown>, const K extends readonly string[]>(
-  obj: unknown,
-  ...keys: K
-): asserts obj is O & {
-  [P in K[number]]: unknown;
+export declare function assertHasKeys<O extends Record<string, unknown>, const K extends readonly string[]>(obj: unknown, ...keys: K): asserts obj is O & {
+    [P in K[number]]: unknown;
 };
 /** Asserts that obj[key] strictly equals expected. */
 export declare function assertKeyEquals<O extends Record<string, unknown>, K extends keyof O>(obj: unknown, key: K, expected: unknown, message?: string): asserts obj is O;
@@ -454,6 +486,41 @@ export declare function assertDateLater(x: unknown, than: Date, message?: string
 export declare function assertDateBetween(x: unknown, min: Date, max: Date, message?: string): asserts x is Date;
 /** Asserts that x is a Date whose full year equals `year`. */
 export declare function assertDateYear(x: unknown, year: number, message?: string): asserts x is Date;
+/** Supported canonical date formats */
+export type DateFormat = 'ISO' | 'UNIX_MS' | 'UNIX_S' | 'RFC_2822';
+/** Asserts that the input matches the expected date format shape. */
+export declare function assertDateFormat(input: unknown, format: DateFormat, message?: string): void;
+/** Converts input of a given format to a Date (throws AssertError on failure). */
+export declare function DateFromFormat(format: DateFormat, input: unknown, message?: string): Date;
+/** Convenience: ensure date-like input, accepting several formats. */
+export declare function DateEnsure(input: unknown, message?: string, formats?: DateFormat[]): Date;
+export declare function assertDateBefore(x: unknown, than: Date, message?: string): asserts x is Date;
+export declare function assertDateAfter(x: unknown, than: Date, message?: string): asserts x is Date;
+export declare function assertDateOnOrBefore(x: unknown, than: Date, message?: string): asserts x is Date;
+export declare function assertDateOnOrAfter(x: unknown, than: Date, message?: string): asserts x is Date;
+export declare function assertDateBetweenInclusive(x: unknown, min: Date, max: Date, message?: string): asserts x is Date;
+export declare function assertDateBetweenExclusive(x: unknown, min: Date, max: Date, message?: string): asserts x is Date;
+export declare function assertDateInPast(x: unknown, message?: string): asserts x is Date;
+export declare function assertDateInFuture(x: unknown, message?: string): asserts x is Date;
+export declare function assertDateWithinPast(x: unknown, ms: number, message?: string): asserts x is Date;
+export declare function assertDateWithinFuture(x: unknown, ms: number, message?: string): asserts x is Date;
+export declare function assertDateSameYear(x: unknown, other: Date, message?: string): asserts x is Date;
+export declare function assertDateSameMonth(x: unknown, other: Date, message?: string): asserts x is Date;
+export declare function assertDateSameDay(x: unknown, other: Date, message?: string): asserts x is Date;
+export type TimeSpan = {
+    ms: number;
+};
+export declare function TimeSpanFromMs(ms: number): TimeSpan;
+export declare function TimeSpanFromSeconds(s: number): TimeSpan;
+export declare function TimeSpanFromMinutes(m: number): TimeSpan;
+export declare function TimeSpanFromHours(h: number): TimeSpan;
+export declare function TimeSpanFromDays(d: number): TimeSpan;
+export declare function DateTimeSpanBetween(a: Date, b: Date): TimeSpan;
+export declare function assertDateTimeSpanLessThan(a: Date, b: Date, limit: TimeSpan, message?: string): void;
+export declare function assertDateTimeSpanLessOrEqual(a: Date, b: Date, limit: TimeSpan, message?: string): void;
+export declare function assertDateBetweenWithin(a: Date, b: Date, min: TimeSpan, max: TimeSpan, message?: string): void;
+export declare function DateAddSpan(d: Date, span: TimeSpan): Date;
+export declare function DateSubtractSpan(d: Date, span: TimeSpan): Date;
 /** Asserts that x is strictly true. */
 export declare function assertTrue(x: unknown, message?: string): asserts x is true;
 /** Asserts that x is strictly false. */
@@ -494,7 +561,7 @@ export declare function assertOneOfPrimitive<T extends string | number | boolean
 export declare const assertIsArrayNotEmpty: typeof assertArrayNotEmpty;
 /** Options for assertOnFail/onFail wrappers. */
 export type AssertOnFailOptions = {
-  catchNonAssertErrors?: boolean;
+    catchNonAssertErrors?: boolean;
 };
 /**
  * Run fn, and if an AssertError occurs, invoke onFail(err) and return its value.
@@ -516,15 +583,12 @@ export declare function assertOnFail<T>(fn: () => T, onFail: (err: AssertError) 
  * onFail(() => risky()).return(fallback) or .run(handler)
  */
 export declare function onFail<T>(fn: () => T): {
-  readonly return: (fallback: T, options?: AssertOnFailOptions) => T;
-  readonly run: (handler: (err: AssertError) => T, options?: AssertOnFailOptions) => T;
+    readonly return: (fallback: T, options?: AssertOnFailOptions) => T;
+    readonly run: (handler: (err: AssertError) => T, options?: AssertOnFailOptions) => T;
 };
-export declare function ifFails<T>(
-  fallback: T,
-  logFail?: boolean
-): {
-  readonly on: (fn: (...args: any[]) => T) => T;
-  readonly return: T;
+export declare function ifFails<T>(fallback: T, logFail?: boolean): {
+    readonly on: (fn: (...args: any[]) => T) => T;
+    readonly return: T;
 };
 export declare function _fn<Args extends any[], R>(defaultValue: R, impl: (...args: Args) => R): (...args: Args) => R;
 /** Asserts referential/primitive equality (===). */
@@ -585,19 +649,17 @@ export declare function assertStringContainsCanonical(x: unknown, needle: string
 export declare function confirm(...assertions: (() => void)[]): boolean;
 /** Like confirm(), but returns error detail of the first failing assertion */
 /** Like confirm(), but returns the first AssertError encountered for diagnostics. */
-export declare function confirmWithError(...assertions: (() => void)[]):
-  | {
-      ok: true;
-    }
-  | {
-      ok: false;
-      error: AssertError;
-    };
+export declare function confirmWithError(...assertions: (() => void)[]): {
+    ok: true;
+} | {
+    ok: false;
+    error: AssertError;
+};
 /** Run all assertions and aggregate all AssertErrors (continues after failures) */
 /** Runs all assertions and aggregates all AssertErrors (continues after failures). */
 export declare function confirmAll(...assertions: (() => void)[]): {
-  ok: boolean;
-  errors: AssertError[];
+    ok: boolean;
+    errors: AssertError[];
 };
 /**
  * Fluent interface for conditional execution with type narrowing.
@@ -611,33 +673,33 @@ export declare function confirmAll(...assertions: (() => void)[]): {
  * Prefer NarrowingBuilder/AssertChain for compile-time propagation across steps.
  */
 export declare class ConfirmationBuilder {
-  private value;
-  private assertions;
-  constructor(value: unknown, initialAssertions?: (() => void)[]);
-  /**
-   * Add an assertion to check
-   */
-  /** Add an assertion to the builder (non-throwing check first, then re-assert for TS narrowing in callbacks). */
-  check(assertion: () => void): this;
-  /**
-   * Execute the callback if all assertions pass.
-   * Inside the callback, assertions are re-run for TypeScript type narrowing.
-   * @param callback - Function to execute if all assertions pass
-   * @returns The result of the callback, or undefined if assertions fail
-   */
-  /**
-   * Execute callback only when all checks pass. Re-asserts before calling to benefit from TS narrowing inside callback.
-   * Returns undefined if any assertion fails.
-   */
-  run<T>(callback: (value: unknown) => T): T | undefined;
-  /**
-   * Execute the callback if all assertions pass, with a fallback value.
-   * @param callback - Function to execute if all assertions pass
-   * @param fallback - Value to return if assertions fail
-   * @returns The result of the callback, or the fallback value
-   */
-  /** Execute callback if checks pass, otherwise return the provided fallback value. */
-  runOr<T>(callback: (value: unknown) => T, fallback: T): T;
+    private value;
+    private assertions;
+    constructor(value: unknown, initialAssertions?: (() => void)[]);
+    /**
+     * Add an assertion to check
+     */
+    /** Add an assertion to the builder (non-throwing check first, then re-assert for TS narrowing in callbacks). */
+    check(assertion: () => void): this;
+    /**
+     * Execute the callback if all assertions pass.
+     * Inside the callback, assertions are re-run for TypeScript type narrowing.
+     * @param callback - Function to execute if all assertions pass
+     * @returns The result of the callback, or undefined if assertions fail
+     */
+    /**
+     * Execute callback only when all checks pass. Re-asserts before calling to benefit from TS narrowing inside callback.
+     * Returns undefined if any assertion fails.
+     */
+    run<T>(callback: (value: unknown) => T): T | undefined;
+    /**
+     * Execute the callback if all assertions pass, with a fallback value.
+     * @param callback - Function to execute if all assertions pass
+     * @param fallback - Value to return if assertions fail
+     * @returns The result of the callback, or the fallback value
+     */
+    /** Execute callback if checks pass, otherwise return the provided fallback value. */
+    runOr<T>(callback: (value: unknown) => T, fallback: T): T;
 }
 /**
  * Create a confirmation builder for fluent assertion checking with type narrowing.
@@ -666,18 +728,18 @@ export type Guard<V, V2 extends V = V> = (x: V) => asserts x is V2;
  * onValue(x).check(assertDefined).check(assertString).run(s => s.toUpperCase())
  */
 export declare class NarrowingBuilder<V> {
-  private value;
-  private guards;
-  constructor(value: V, initialGuards?: Array<Guard<any, any>>);
-  /** Add a guard that narrows V to V2 */
-  /** Add a guard; returns a new builder typed to the narrowed V2. */
-  check<V2 extends V>(guard: Guard<V, V2>): NarrowingBuilder<V2>;
-  /** Execute callback if all guards pass; returns undefined on failure */
-  /** Execute fn if all guards pass; returns undefined if an AssertError occurs. */
-  run<T>(fn: (v: V) => T): T | undefined;
-  /** Execute callback if all guards pass; otherwise return fallback */
-  /** Execute fn if all guards pass; otherwise return fallback. */
-  runOr<T>(fn: (v: V) => T, fallback: T): T;
+    private value;
+    private guards;
+    constructor(value: V, initialGuards?: Array<Guard<any, any>>);
+    /** Add a guard that narrows V to V2 */
+    /** Add a guard; returns a new builder typed to the narrowed V2. */
+    check<V2 extends V>(guard: Guard<V, V2>): NarrowingBuilder<V2>;
+    /** Execute callback if all guards pass; returns undefined on failure */
+    /** Execute fn if all guards pass; returns undefined if an AssertError occurs. */
+    run<T>(fn: (v: V) => T): T | undefined;
+    /** Execute callback if all guards pass; otherwise return fallback */
+    /** Execute fn if all guards pass; otherwise return fallback. */
+    runOr<T>(fn: (v: V) => T, fallback: T): T;
 }
 /** Start a typed narrowing chain */
 /** Start a typed narrowing chain from an initial value. */
@@ -699,67 +761,67 @@ export declare function onConfirmedWith<V, V1 extends V, V2 extends V1, V3 exten
  * Use .run(cb) or .runOr(cb, fallback) to access the narrowed value.
  */
 export declare class AssertChain<V> {
-  private builder;
-  constructor(builder: NarrowingBuilder<V>);
-  /** Add a custom guard */
-  /** Add a custom guard to the chain. */
-  check<V2 extends V>(guard: Guard<V, V2>): AssertChain<V2>;
-  /** Assert that the value is a string (alias: isString). */
-  string(): AssertChain<V & string>;
-  /** Alias for .string(). */
-  isString(): AssertChain<V & string>;
-  /** Assert that the value is a number (alias: isNumber). */
-  number(): AssertChain<V & number>;
-  /** Alias for .number(). */
-  isNumber(): AssertChain<V & number>;
-  /** Assert that the value is a boolean (alias: isBoolean). */
-  boolean(): AssertChain<V & boolean>;
-  /** Alias for .boolean(). */
-  isBoolean(): AssertChain<V & boolean>;
-  /** Assert that the value is an array (alias: isArray). */
-  array(): AssertChain<V & unknown[]>;
-  /** Alias for .array(). */
-  isArray(): AssertChain<V & unknown[]>;
-  /** Assert that the value is a plain object (alias: isObject). */
-  object(): AssertChain<V & Record<string, unknown>>;
-  /** Alias for .object(). */
-  isObject(): AssertChain<V & Record<string, unknown>>;
-  /** Assert that the value is a Date (alias: isDate). */
-  date(): AssertChain<V & Date>;
-  /** Alias for .date(). */
-  isDate(): AssertChain<V & Date>;
-  /** Assert that the value is not undefined. */
-  defined(): AssertChain<Exclude<V, undefined>>;
-  /** Assert that the value is not null. */
-  nonNull(): AssertChain<Exclude<V, null>>;
-  /** Assert that the value is neither null nor undefined. */
-  present(): AssertChain<Exclude<V, null | undefined>>;
-  /** Alias: value exists (not null/undefined). */
-  exists(): AssertChain<Exclude<V, null | undefined>>;
-  /** Assert that the value is an instance of the given constructor. */
-  instanceOf<C extends new (...args: any[]) => any>(ctor: C): AssertChain<V & InstanceType<C>>;
-  /** Assert that the value is a non-empty string (alias: isNonEmptyString). */
-  nonEmptyString(): AssertChain<V & string>;
-  /** Alias for .nonEmptyString(). */
-  isNonEmptyString(): AssertChain<V & string>;
-  /** Assert that the string's length is >= n. */
-  stringLengthAtLeast(n: number): AssertChain<V & string>;
-  /** Assert that the string's length is <= n. */
-  stringLengthAtMost(n: number): AssertChain<V & string>;
-  /** Assert that the string contains the given substring or matches regex. */
-  stringContains(needle: string | RegExp): AssertChain<V & string>;
-  /** Assert that the value is a non-empty array (alias: isNonEmptyArray). */
-  nonEmptyArray(): AssertChain<V & unknown[]>;
-  /** Alias for .nonEmptyArray(). */
-  isNonEmptyArray(): AssertChain<V & unknown[]>;
-  /** Assert that the array length is exactly len. */
-  arrayLength(len: number): AssertChain<V & unknown[]>;
-  /** Execute callback if all guards pass */
-  /** Execute fn if all chained guards pass; otherwise undefined. */
-  run<T>(fn: (v: V) => T): T | undefined;
-  /** Execute callback if all guards pass; otherwise fallback */
-  /** Execute fn if all guards pass; otherwise return fallback. */
-  runOr<T>(fn: (v: V) => T, fallback: T): T;
+    private builder;
+    constructor(builder: NarrowingBuilder<V>);
+    /** Add a custom guard */
+    /** Add a custom guard to the chain. */
+    check<V2 extends V>(guard: Guard<V, V2>): AssertChain<V2>;
+    /** Assert that the value is a string (alias: isString). */
+    string(): AssertChain<V & string>;
+    /** Alias for .string(). */
+    isString(): AssertChain<V & string>;
+    /** Assert that the value is a number (alias: isNumber). */
+    number(): AssertChain<V & number>;
+    /** Alias for .number(). */
+    isNumber(): AssertChain<V & number>;
+    /** Assert that the value is a boolean (alias: isBoolean). */
+    boolean(): AssertChain<V & boolean>;
+    /** Alias for .boolean(). */
+    isBoolean(): AssertChain<V & boolean>;
+    /** Assert that the value is an array (alias: isArray). */
+    array(): AssertChain<V & unknown[]>;
+    /** Alias for .array(). */
+    isArray(): AssertChain<V & unknown[]>;
+    /** Assert that the value is a plain object (alias: isObject). */
+    object(): AssertChain<V & Record<string, unknown>>;
+    /** Alias for .object(). */
+    isObject(): AssertChain<V & Record<string, unknown>>;
+    /** Assert that the value is a Date (alias: isDate). */
+    date(): AssertChain<V & Date>;
+    /** Alias for .date(). */
+    isDate(): AssertChain<V & Date>;
+    /** Assert that the value is not undefined. */
+    defined(): AssertChain<Exclude<V, undefined>>;
+    /** Assert that the value is not null. */
+    nonNull(): AssertChain<Exclude<V, null>>;
+    /** Assert that the value is neither null nor undefined. */
+    present(): AssertChain<Exclude<V, null | undefined>>;
+    /** Alias: value exists (not null/undefined). */
+    exists(): AssertChain<Exclude<V, null | undefined>>;
+    /** Assert that the value is an instance of the given constructor. */
+    instanceOf<C extends new (...args: any[]) => any>(ctor: C): AssertChain<V & InstanceType<C>>;
+    /** Assert that the value is a non-empty string (alias: isNonEmptyString). */
+    nonEmptyString(): AssertChain<V & string>;
+    /** Alias for .nonEmptyString(). */
+    isNonEmptyString(): AssertChain<V & string>;
+    /** Assert that the string's length is >= n. */
+    stringLengthAtLeast(n: number): AssertChain<V & string>;
+    /** Assert that the string's length is <= n. */
+    stringLengthAtMost(n: number): AssertChain<V & string>;
+    /** Assert that the string contains the given substring or matches regex. */
+    stringContains(needle: string | RegExp): AssertChain<V & string>;
+    /** Assert that the value is a non-empty array (alias: isNonEmptyArray). */
+    nonEmptyArray(): AssertChain<V & unknown[]>;
+    /** Alias for .nonEmptyArray(). */
+    isNonEmptyArray(): AssertChain<V & unknown[]>;
+    /** Assert that the array length is exactly len. */
+    arrayLength(len: number): AssertChain<V & unknown[]>;
+    /** Execute callback if all guards pass */
+    /** Execute fn if all chained guards pass; otherwise undefined. */
+    run<T>(fn: (v: V) => T): T | undefined;
+    /** Execute callback if all guards pass; otherwise fallback */
+    /** Execute fn if all guards pass; otherwise return fallback. */
+    runOr<T>(fn: (v: V) => T, fallback: T): T;
 }
 /** Start a chainable assertion flow */
 /** Start an AssertChain over a value (alias exposed under assert.that). */
@@ -767,54 +829,110 @@ export declare function chain<V>(value: V): AssertChain<V>;
 /** Start a chain with initial guards */
 /** Start an AssertChain with initial guards applied. */
 export declare function chainWith<V>(value: V, ...guards: Array<Guard<any, any>>): AssertChain<V>;
-/**
- * Facade namespace offering a concise API:
- * - assert.that(x) -> AssertChain
- * - assert.route / assert.routeAsync / assert.confirm*
- * - assert.isString/Number/...: assertion helpers identical to top-level exports
- */
-export declare namespace assert {
-  const that: typeof chain;
-  const onValue: typeof import('./assertroute').onValue;
-  const onConfirmedWith: typeof import('./assertroute').onConfirmedWith;
-  const onConfirmed: typeof import('./assertroute').onConfirmed;
-  const route: typeof assertRoute;
-  const routeAsync: typeof assertRouteAsync;
-  const confirm: typeof import('./assertroute').onConfirmedWith;
-  const confirmBool: typeof import('./assertroute').confirm;
-  const confirmWithError: typeof import('./assertroute').confirmWithError;
-  const confirmAll: typeof import('./assertroute').confirmAll;
-  const isString: typeof assertString;
-  const isNumber: typeof assertNumber;
-  const isBoolean: typeof assertBoolean;
-  const isArray: typeof assertArray;
-  const isObject: typeof assertObject;
-  const isDate: typeof assertDate;
-  const isFunction: typeof assertFunction;
-  const isPromiseLike: typeof assertPromiseLike;
-  const isDefined: typeof assertDefined;
-  const isNonNull: typeof assertNonNull;
-  const isPresent: typeof assertPresent;
-  const exists: typeof assertExists;
-  const instanceOf: typeof assertInstanceOf;
-  const isNonEmptyString: typeof assertNonEmptyString;
-  const stringLengthAtLeast: typeof assertStringLengthAtLeast;
-  const stringLengthAtMost: typeof assertStringLengthAtMost;
-  const stringContains: typeof assertStringContains;
-  const isNonEmptyArray: typeof assertArrayNotEmpty;
-  const arrayLength: typeof assertArrayLength;
-  const isElementHidden: typeof assertElementHidden;
-  const isElementVisible: typeof assertElementVisible;
-  const isPromise: typeof assertPromiseLike;
-  const arrayOnlyNumbers: typeof assertArrayOnlyHasNumbers;
-  const arrayOnlyStrings: typeof assertArrayOnlyHasStrings;
-  const arrayAllTruthy: typeof assertArrayEveryIsTruthy;
-  const arrayAllFalsy: typeof assertArrayEveryIsFalsy;
-}
+export declare const vouch: {
+    readonly that: typeof chain;
+    readonly onValue: typeof onValue;
+    readonly onConfirmedWith: typeof onConfirmedWith;
+    readonly onConfirmed: typeof onConfirmed;
+    readonly route: typeof assertRoute;
+    readonly routeAsync: typeof assertRouteAsync;
+    readonly async: typeof assertRouteAsync;
+    readonly routeFn: typeof assertRouteFn;
+    readonly fn: typeof assertRouteFn;
+    readonly fnAsync: typeof fnAsync;
+    readonly confirm: typeof onConfirmedWith;
+    readonly confirmBool: typeof confirm;
+    readonly confirmWithError: typeof confirmWithError;
+    readonly confirmAll: typeof confirmAll;
+    readonly assertString: typeof assertString;
+    readonly assertNumber: typeof assertNumber;
+    readonly assertBoolean: typeof assertBoolean;
+    readonly assertArray: typeof assertArray;
+    readonly assertObject: typeof assertObject;
+    readonly assertDate: typeof assertDate;
+    readonly assertFunction: typeof assertFunction;
+    readonly assertPromiseLike: typeof assertPromiseLike;
+    readonly assertDefined: typeof assertDefined;
+    readonly assertNonNull: typeof assertNonNull;
+    readonly assertPresent: typeof assertPresent;
+    readonly assertExists: typeof assertExists;
+    readonly assertInstanceOf: typeof assertInstanceOf;
+    readonly IsString: typeof expectString;
+    readonly IsNumber: typeof expectNumber;
+    readonly IsBoolean: typeof expectBoolean;
+    readonly IsArray: typeof expectArray;
+    readonly IsObject: typeof expectObject;
+    readonly IsDate: typeof expectDate;
+    readonly IsNumberIsPositive: (x: unknown, message?: string) => number;
+    readonly IsArrayNotEmpty: <T = unknown>(x: unknown, message?: string) => T[];
+    readonly IsStringContains: (x: unknown, needle: string | RegExp, message?: string) => string;
+    readonly IsDateBetweenInclusive: (x: unknown, min: Date, max: Date, message?: string) => Date;
+    readonly confirmOne: (check: () => void) => boolean;
+};
+export declare const v: {
+    readonly that: typeof chain;
+    readonly onValue: typeof onValue;
+    readonly onConfirmedWith: typeof onConfirmedWith;
+    readonly onConfirmed: typeof onConfirmed;
+    readonly route: typeof assertRoute;
+    readonly routeAsync: typeof assertRouteAsync;
+    readonly async: typeof assertRouteAsync;
+    readonly routeFn: typeof assertRouteFn;
+    readonly fn: typeof assertRouteFn;
+    readonly fnAsync: typeof fnAsync;
+    readonly confirm: typeof onConfirmedWith;
+    readonly confirmBool: typeof confirm;
+    readonly confirmWithError: typeof confirmWithError;
+    readonly confirmAll: typeof confirmAll;
+    readonly assertString: typeof assertString;
+    readonly assertNumber: typeof assertNumber;
+    readonly assertBoolean: typeof assertBoolean;
+    readonly assertArray: typeof assertArray;
+    readonly assertObject: typeof assertObject;
+    readonly assertDate: typeof assertDate;
+    readonly assertFunction: typeof assertFunction;
+    readonly assertPromiseLike: typeof assertPromiseLike;
+    readonly assertDefined: typeof assertDefined;
+    readonly assertNonNull: typeof assertNonNull;
+    readonly assertPresent: typeof assertPresent;
+    readonly assertExists: typeof assertExists;
+    readonly assertInstanceOf: typeof assertInstanceOf;
+    readonly IsString: typeof expectString;
+    readonly IsNumber: typeof expectNumber;
+    readonly IsBoolean: typeof expectBoolean;
+    readonly IsArray: typeof expectArray;
+    readonly IsObject: typeof expectObject;
+    readonly IsDate: typeof expectDate;
+    readonly IsNumberIsPositive: (x: unknown, message?: string) => number;
+    readonly IsArrayNotEmpty: <T = unknown>(x: unknown, message?: string) => T[];
+    readonly IsStringContains: (x: unknown, needle: string | RegExp, message?: string) => string;
+    readonly IsDateBetweenInclusive: (x: unknown, min: Date, max: Date, message?: string) => Date;
+    readonly confirmOne: (check: () => void) => boolean;
+};
+export type AssertionEntry = {
+    name: string;
+    check: (v: unknown) => void;
+    category?: 'string' | 'number' | 'array' | 'object' | 'date' | 'boolean' | 'element' | 'misc';
+};
+export declare const catalog: ReadonlyArray<AssertionEntry>;
+export declare function report(check: () => void): {
+    ok: true;
+} | {
+    ok: false;
+    error: AssertError;
+};
+export declare const mustBe: {
+    readonly string: (v: unknown, msg?: string) => () => void;
+    readonly number: (v: unknown, msg?: string) => () => void;
+    readonly array: (v: unknown, msg?: string) => () => void;
+    readonly object: (v: unknown, msg?: string) => () => void;
+    readonly boolean: (v: unknown, msg?: string) => () => void;
+    readonly date: (v: unknown, msg?: string) => () => void;
+};
 export type AssertErrorTrapOptions = {
-  onError?: (err: AssertError) => void;
-  /** When true (or returns true), unhandled AssertErrors are suppressed (prevent process/page break). */
-  suppress?: boolean | ((err: AssertError) => boolean);
+    onError?: (err: AssertError) => void;
+    /** When true (or returns true), unhandled AssertErrors are suppressed (prevent process/page break). */
+    suppress?: boolean | ((err: AssertError) => boolean);
 };
 /**
  * Install a best-effort global trap for unhandled AssertErrors in Node and browsers.
@@ -825,6 +943,6 @@ export type AssertErrorTrapOptions = {
  * This helper is provided for last-resort safety nets and diagnostics.
  */
 export declare function installAssertErrorTrap(options?: AssertErrorTrapOptions): {
-  readonly uninstall: () => void;
+    readonly uninstall: () => void;
 };
 //# sourceMappingURL=assertroute.d.ts.map
