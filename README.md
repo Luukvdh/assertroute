@@ -5,20 +5,6 @@ Tiny, fast runtime assertions with clean TypeScript narrowing — plus a block-s
 Validate at the top; write clear, assumption-friendly logic in the middle. If any `assert*` throws an `AssertError` inside the route, we stop and return your default. Fewer `try/catch`, fewer defensive `if` checks, better narrowing.
 
 Have you always dislikes counting the brackets of you nested conditions? There has got to be a better way!
-###before
-
-```ts
-  if (!cdata || !Array.isArray(cdata.tags) || cdata.tags.length === 0) return [];
-  try {  // exceptions mixed up
-    result = allclients.filter((x) => x.tagsShared?.some((t) => cdata.tags.includes(t))).map((x) => x.name);
-  } catch (e) {
-    if (e instanceof Error) {
-      // ad-hoc fallback branches...
-      result = [];
-    }
-  }
-  if (!result || result.length === 0) {
-```
 
 ## Install
 
