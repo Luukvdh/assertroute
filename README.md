@@ -22,7 +22,7 @@ Have you always dislikes counting the brackets of you nested conditions? There h
 
 ## Install
 
-````bash
+```bash
 npm i assertroute
 ```
 
@@ -46,9 +46,6 @@ const findClientTags = v.fn<string[]>([], (cdata: unknown, allclients: unknown[]
   // logic reads clearly with fewer conditionals.
   return allclients.filter((x) => Array.isArray(x.tagsShared) && x.tagsShared.some((t) => tags.includes(t))).map((x) => x.name);
 });
-
-// Usage
-const names = findClientTags(input, clients); // [] when any assert fails
 ```
 
 Key benefits:
@@ -209,4 +206,7 @@ const isValidUser = v.confirmOne(() => {
 Pro tip: keep one canonical name per helper. It improves discoverability, docs, and IntelliSense — no alias sprawl.
 
 Happy asserting.
-````
+
+```
+
+```
